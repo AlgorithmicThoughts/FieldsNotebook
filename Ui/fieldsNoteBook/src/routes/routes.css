@@ -1,0 +1,25 @@
+.workspace-message {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+  max-width: 640px;
+  padding: 48px 32px;
+}
+
+.workspace-message p {
+  color: var(--muted);
+}
+
+.page-placeholder {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  padding: 48px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.page-placeholder p {
+  color: var(--muted);
+}
