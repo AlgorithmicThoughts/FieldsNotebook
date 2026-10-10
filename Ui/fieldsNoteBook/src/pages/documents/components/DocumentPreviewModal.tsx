@@ -1,7 +1,6 @@
 import { Badge } from '@/components/common/Badge'
 import { Modal } from '@/components/common/Modal'
 import type { SiteDocument } from '../documentsData'
-import { SafetyPreview } from './SafetyPreview'
 import { SchedulePreview } from './SchedulePreview'
 import { SiteLayoutPreview } from './SiteLayoutPreview'
 
@@ -11,10 +10,6 @@ interface PreviewBodyProps {
 }
 
 function PreviewBody({ item, projectId }: PreviewBodyProps) {
-  if (item.id === 'safety') {
-    return <SafetyPreview />
-  }
-
   if (item.id === 'schedule') {
     return <SchedulePreview />
   }

@@ -39,3 +39,27 @@ Accept: application/json
 X-Demo-User-Id: 3
 
 ###
+
+PATCH {{FieldsNotebook_HostAddress}}/api/me/settings
+Accept: application/json
+Content-Type: application/json
+X-Demo-User-Id: 3
+
+{
+  "themePreference": "Dark",
+  "emailEnabled": true
+}
+
+###
+
+GET {{FieldsNotebook_HostAddress}}/api/reports/delays?projectIds=1&projectIds=3&dateFrom=2026-01-01&dateTo=2026-12-31
+Accept: application/json
+X-Demo-User-Id: 3
+
+###
+
+GET {{FieldsNotebook_HostAddress}}/api/reports/delay-tags
+Accept: application/json
+X-Demo-User-Id: 3
+
+###

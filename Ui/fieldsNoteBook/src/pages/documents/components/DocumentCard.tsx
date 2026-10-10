@@ -10,7 +10,7 @@ interface DocumentCardProps {
   onView: (id: SiteDocumentId) => void
 }
 
-/** One sample document, opening its preview. There is no download or upload. */
+/** One sample document, opening its file or its preview. There is no upload. */
 export function DocumentCard({ item, onView }: DocumentCardProps) {
   return (
     <Card className="h-full">
@@ -25,7 +25,16 @@ export function DocumentCard({ item, onView }: DocumentCardProps) {
 
         <div className="mt-[22px] flex w-full flex-wrap items-center justify-between gap-[10px]">
           <Badge label={item.version} tone="outline" />
-          <Button label="View" icon={ArrowUpRight} onClick={() => onView(item.id)} />
+          {item.fileUrl ? (
+            <Button
+              label="View"
+              icon={ArrowUpRight}
+              nativeButton={false}
+              render={<a href={item.fileUrl} target="_blank" rel="noreferrer" />}
+            />
+          ) : (
+            <Button label="View" icon={ArrowUpRight} onClick={() => onView(item.id)} />
+          )}
         </div>
       </div>
     </Card>

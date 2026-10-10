@@ -74,9 +74,14 @@ const DEMO_USER_HEADER = 'X-Demo-User-Id'
 
 const UNREACHABLE = 'The request did not reach Field Notebook. Try again.'
 
-function requestHeaders(): Record<string, string> {
+function requestHeaders(body: unknown): Record<string, string> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   const session = readAuthSession()
+
+  // The browser supplies the multipart boundary for photo uploads.
+  if (body !== undefined && !(body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json'
+  }
 
   if (session !== null) {
     headers[DEMO_USER_HEADER] = String(session.user.userId)
@@ -95,16 +100,31 @@ async function problemTitle(response: Response): Promise<string> {
   }
 }
 
+function encodeBody(body: unknown): BodyInit | undefined {
+  if (body === undefined || body instanceof FormData) return body
+  return JSON.stringify(body)
+}
+
 /**
  * One request against the Field Notebook API. Cancellation surfaces as the
  * same AbortError the mock raises; any other failure becomes an ApiError whose
  * message a page can show as it is.
  */
-async function apiRequest<T>(method: 'GET' | 'POST', path: string, options?: RequestOptions, body?: FormData): Promise<T> {
+async function apiRequest<T>(
+  method: 'GET' | 'POST' | 'PATCH',
+  path: string,
+  options?: RequestOptions,
+  body?: unknown,
+): Promise<T> {
   let response: Response
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { method, headers: requestHeaders(), signal: options?.signal, body })
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: requestHeaders(body),
+      body: encodeBody(body),
+      signal: options?.signal,
+    })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error
@@ -131,4 +151,9 @@ export function apiPost<T>(path: string, options?: RequestOptions): Promise<T> {
 
 export function apiPostForm<T>(path: string, body: FormData, options?: RequestOptions): Promise<T> {
   return apiRequest<T>('POST', path, options, body)
+}
+
+/** A PATCH whose JSON body carries only the fields being changed. */
+export function apiPatch<T>(path: string, body: unknown, options?: RequestOptions): Promise<T> {
+  return apiRequest<T>('PATCH', path, options, body)
 }

@@ -18,7 +18,7 @@ ManagerFactory.RegisterServices(builder.Services);
 // Development only: lets the Vite dev server call the API from the browser.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.WithOrigins(allowedOrigins).WithMethods("GET", "POST").WithHeaders(DemoIdentity.HeaderName, "Content-Type")));
+    policy.WithOrigins(allowedOrigins).WithMethods("GET", "POST", "PATCH").WithHeaders(DemoIdentity.HeaderName, "Content-Type")));
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();

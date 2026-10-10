@@ -61,21 +61,27 @@ export type PreviewView =
   | { kind: 'ready'; rows: DelayReportRow[]; tagNames: string[] }
 
 /**
- * The result the page may render. `key` records the request the result belongs
- * to, so a late reply for an earlier scope no longer matches and never shows.
- * The tag lookup travels with the rows so the breakdown never renders against
- * a half-loaded set of reasons.
+ * The report result the page may render. `key` records the request the result
+ * belongs to, so a late reply for an earlier scope no longer matches and never
+ * shows.
  */
 export type ReportState =
   | { key: null; status: 'idle' }
   | { key: string; status: 'error'; message: string }
-  | { key: string; status: 'ready'; rows: DelayReportRow[]; tagNames: string[] }
+  | { key: string; status: 'ready'; rows: DelayReportRow[] }
 
-export function toPreviewView(
-  hasScope: boolean,
-  state: ReportState,
-  requestKey: string,
-): PreviewView {
+/**
+ * The approved reason tags. They never change with the scope, so the page
+ * loads them once rather than with every report request.
+ */
+export type TagState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; tagNames: string[] }
+
+type ReportView = Exclude<PreviewView, { kind: 'ready' }> | { kind: 'ready'; rows: DelayReportRow[] }
+
+function toReportView(hasScope: boolean, state: ReportState, requestKey: string): ReportView {
   if (!hasScope) {
     return { kind: 'no-scope' }
   }
@@ -88,7 +94,30 @@ export function toPreviewView(
     return { kind: 'error', message: state.message }
   }
 
-  return { kind: 'ready', rows: state.rows, tagNames: state.tagNames }
+  return { kind: 'ready', rows: state.rows }
+}
+
+/**
+ * The breakdown lists every approved tag, so rows render only once the tags
+ * are in hand too; a partial breakdown never reaches the screen.
+ */
+export function toPreviewView(
+  hasScope: boolean,
+  state: ReportState,
+  requestKey: string,
+  tags: TagState,
+): PreviewView {
+  const report = toReportView(hasScope, state, requestKey)
+
+  if (report.kind !== 'ready') {
+    return report
+  }
+
+  if (tags.status !== 'ready') {
+    return tags.status === 'error' ? { kind: 'error', message: tags.message } : { kind: 'loading' }
+  }
+
+  return { kind: 'ready', rows: report.rows, tagNames: tags.tagNames }
 }
 
 export function toReportSummary(rows: DelayReportRow[], tagNames: string[]): ReportSummary {

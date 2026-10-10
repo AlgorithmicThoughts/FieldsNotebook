@@ -1,4 +1,5 @@
 using Common.Delays;
+using Common.Reports;
 using Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -71,6 +72,71 @@ namespace Accessors.Delays
 
             return new ActiveDelaySet(delays, impacts);
         }
+
+        public async Task<DelayReportSet> GetDelayReportAsync(
+            IReadOnlyCollection<int> projectIds, DateTimeOffset? createdFrom, DateTimeOffset? createdBefore, CancellationToken cancellationToken)
+        {
+            // One scope for both queries, so the impacts query filters in SQL instead of
+            // sending every delay ID back as a parameter (SQL Server allows 2,100 per command).
+            var scope = context.Delays.AsNoTracking()
+                .Where(d => projectIds.Contains(d.ProjectId)
+                            && (createdFrom == null || d.CreatedAt >= createdFrom)
+                            && (createdBefore == null || d.CreatedAt < createdBefore));
+
+            var delays = await (
+                from d in scope
+                join p in context.Projects.AsNoTracking() on d.ProjectId equals p.Id
+                join status in context.DelayStatus.AsNoTracking() on d.DelayStatusId equals status.Id
+                join tag in context.DelayTags.AsNoTracking() on d.DelayTagId equals tag.Id
+                join owner in context.Crew.AsNoTracking() on d.OwnerCrewId equals owner.Id
+                join segment in context.Segments.AsNoTracking() on d.SegmentId equals segment.Id
+                join reporter in context.Users.AsNoTracking() on d.ReportedByUserId equals reporter.Id
+                orderby d.CreatedAt descending, d.Id descending
+                select new Common.Reports.DelayReportRecord(
+                    d.Id,
+                    d.Number,
+                    p.Name,
+                    d.Title,
+                    status.Name,
+                    tag.Name,
+                    d.ReportType,
+                    owner.Name,
+                    segment.Name,
+                    d.LocationName,
+                    reporter.DisplayName,
+                    d.CreatedAt,
+                    context.DelayCycles.AsNoTracking()
+                        .Where(c => c.DelayId == d.Id)
+                        .OrderByDescending(c => c.CreatedAt).ThenByDescending(c => c.DelayCycleId)
+                        .Select(c => c.ClosedAt)
+                        .FirstOrDefault(),
+                    context.DelayCycles.AsNoTracking().Count(c => c.DelayId == d.Id),
+                    context.DelayPhotos.AsNoTracking().Count(ph => ph.DelayId == d.Id)))
+                .ToListAsync(cancellationToken);
+            if (delays.Count == 0)
+            {
+                return DelayReportSet.Empty;
+            }
+
+            var impacts = await (
+                from d in scope
+                join i in context.DelayImpacts.AsNoTracking() on d.Id equals i.DelayId
+                join crew in context.Crew.AsNoTracking() on i.BlockedCrewId equals crew.Id
+                select new { i.DelayId, crew.Name })
+                .Distinct()
+                .OrderBy(i => i.Name)
+                .Select(i => new DelayReportImpactRecord(i.DelayId, i.Name))
+                .ToListAsync(cancellationToken);
+
+            return new DelayReportSet(delays, impacts);
+        }
+
+        public async Task<IReadOnlyList<string>> GetActiveDelayTagNamesAsync(CancellationToken cancellationToken) =>
+            await context.DelayTags.AsNoTracking()
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.Id)
+                .Select(t => t.Name)
+                .ToListAsync(cancellationToken);
 
         public async Task<TrackingSet> GetProjectTrackingDetailsAsync(int projectId, CancellationToken cancellationToken)
         {

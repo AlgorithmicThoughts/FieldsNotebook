@@ -1,39 +1,52 @@
+import { Button } from '@/components/common/Button'
 import { useWorkspace } from '@/routes/useWorkspace'
 import { useAppState } from '@/state/appState'
 import { AccountCard } from './components/AccountCard'
 import { AppearanceCard } from './components/AppearanceCard'
 import { NotificationsCard } from './components/NotificationsCard'
 import { ProjectsCard } from './components/ProjectsCard'
-import { useNotificationChannels } from './useNotificationChannels'
+import { SettingError } from './components/SettingError'
+import { useSettingsDraft } from './useSettingsDraft'
 import './SettingsPage.css'
 
 /** Preferences and read-only identity. No action here changes a delay. */
 export function SettingsPage() {
   const { user, project } = useWorkspace()
-  const { themePreference, themeError, selectThemePreference } = useAppState()
-  const { emailEnabled, smsEnabled, channelError, setChannel } = useNotificationChannels(user)
+  const { savedSettings, themeError, saveSettings } = useAppState()
+  const { values, hasChanges, isSaving, saveError, change, save } = useSettingsDraft(
+    savedSettings,
+    saveSettings,
+  )
 
   return (
     <>
-      <div className="settings-title">
-        <h1>Settings</h1>
-        <p>Make Field Notebook fit your day.</p>
+      <div className="page-title">
+        <div>
+          <h1>Settings</h1>
+          <p>Make Field Notebook fit your day.</p>
+        </div>
+        <Button
+          label={isSaving ? 'Saving…' : 'Save'}
+          variant="primary"
+          disabled={!hasChanges || isSaving}
+          onClick={save}
+        />
       </div>
+      <SettingError message={saveError} />
 
       <div className="settings-grid">
         <div className="stack">
           <AppearanceCard
-            preference={themePreference}
+            preference={values.themePreference}
             error={themeError}
-            onSelect={selectThemePreference}
+            onSelect={(preference) => change('themePreference', preference)}
           />
           <NotificationsCard
             email={user.email}
             phone={user.phone}
-            emailEnabled={emailEnabled}
-            smsEnabled={smsEnabled}
-            error={channelError}
-            onChannelChange={setChannel}
+            emailEnabled={values.emailEnabled}
+            smsEnabled={values.smsEnabled}
+            onChannelChange={change}
           />
         </div>
 

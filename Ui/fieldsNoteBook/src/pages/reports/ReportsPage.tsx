@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download } from 'lucide-react'
 import { isAbortError, isApiError } from '@/api/errors'
-import { getDelayReport, getDelayTags } from '@/api/reports'
-import { Button } from '@/components/common/Button'
-import { buildReportFileName, type DelayReportRequest } from '@/domain/reports'
+import { getDelayReport } from '@/api/reports'
+import type { DelayReportRequest } from '@/domain/reports'
 import { useWorkspace } from '@/routes/useWorkspace'
 import { ReportPreview } from './components/ReportPreview'
 import { ReportScopeCard } from './components/ReportScopeCard'
-import { downloadReportJson } from './exportReport'
 import { toPreviewView, type ReportState } from './reportsView'
 import { useDebouncedValue } from './useDebouncedValue'
+import { useDelayTags } from './useDelayTags'
 import './ReportsPage.css'
 
 /** Long enough that typing a year fires one request, short enough to feel live. */
@@ -35,6 +33,7 @@ export function ReportsPage() {
   const [dateTo, setDateTo] = useState('')
   const [reloadCount, setReloadCount] = useState(0)
   const [state, setState] = useState<ReportState>({ key: null, status: 'idle' })
+  const { tags, retry: retryTags } = useDelayTags()
 
   const settledDates = useDebouncedValue(`${dateFrom}|${dateTo}`, DATE_DEBOUNCE_MS)
   const request = useMemo(
@@ -52,13 +51,10 @@ export function ReportsPage() {
     const controller = new AbortController()
     const { signal } = controller
 
-    // The reason breakdown lists every approved tag, so the lookup has to be in
-    // hand before the rows render. Loading both under one key keeps a partial
-    // breakdown off the screen and leaves one error path.
-    Promise.all([getDelayReport(request, { signal }), getDelayTags({ signal })])
-      .then(([rows, tagNames]) => {
+    getDelayReport(request, { signal })
+      .then((rows) => {
         if (!signal.aborted) {
-          setState({ key: requestKey, status: 'ready', rows, tagNames })
+          setState({ key: requestKey, status: 'ready', rows })
         }
       })
       .catch((error: unknown) => {
@@ -76,15 +72,15 @@ export function ReportsPage() {
     return () => controller.abort()
   }, [hasScope, request, requestKey])
 
-  const view = toPreviewView(hasScope, state, requestKey)
-  const rows = view.kind === 'ready' ? view.rows : []
+  const view = toPreviewView(hasScope, state, requestKey, tags)
 
-  function exportJson() {
-    const codes = user.projects
-      .filter((project) => selectedProjectIds.includes(project.id))
-      .map((project) => project.code)
+  /** Retries whichever request failed; a loaded tag list is kept. */
+  function retry() {
+    retryTags()
 
-    downloadReportJson(rows, buildReportFileName(codes, request.dateFrom, request.dateTo))
+    if (state.status === 'error') {
+      setReloadCount((count) => count + 1)
+    }
   }
 
   return (
@@ -95,13 +91,6 @@ export function ReportsPage() {
           <h1>Delay reports</h1>
           <p>Turn field records into better plans for the next project.</p>
         </div>
-        <Button
-          label="Export JSON"
-          variant="primary"
-          icon={Download}
-          disabled={rows.length === 0}
-          onClick={exportJson}
-        />
       </div>
 
       <div className="report-grid">
@@ -115,7 +104,7 @@ export function ReportsPage() {
           onDateToChange={setDateTo}
         />
 
-        <ReportPreview view={view} onRetry={() => setReloadCount((count) => count + 1)} />
+        <ReportPreview view={view} onRetry={retry} />
       </div>
     </>
   )

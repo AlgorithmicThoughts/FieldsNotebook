@@ -3,8 +3,9 @@ import { Badge } from '@/components/common/Badge'
 import { Card, CardHeading } from '@/components/common/Card'
 import { Icon } from '@/components/common/Icon'
 import { Switch } from '@/components/common/Switch'
-import { SettingError } from './SettingError'
-import type { NotificationChannel } from '../useNotificationChannels'
+
+/** UserSettings.EmailEnabled and UserSettings.SmsEnabled. Push is out of scope. */
+export type NotificationChannel = 'emailEnabled' | 'smsEnabled'
 
 interface NotificationsCardProps {
   email: string
@@ -12,7 +13,6 @@ interface NotificationsCardProps {
   phone: string | null
   emailEnabled: boolean
   smsEnabled: boolean
-  error: string | null
   onChannelChange: (channel: NotificationChannel, enabled: boolean) => void
 }
 
@@ -21,13 +21,11 @@ export function NotificationsCard({
   phone,
   emailEnabled,
   smsEnabled,
-  error,
   onChannelChange,
 }: NotificationsCardProps) {
   return (
     <Card>
       <CardHeading title="Notifications" action={<Icon icon={Bell} />} />
-      <SettingError message={error} />
 
       <div className="setting-row">
         <div>

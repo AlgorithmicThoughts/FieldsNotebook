@@ -2,6 +2,7 @@ using Accessors;
 using Managers.Delays;
 using Managers.Home;
 using Managers.Notifications;
+using Managers.Reports;
 using Managers.Upcoming;
 using Managers.Users;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +22,7 @@ public class ManagerFactory(IServiceProvider services)
         services.AddScoped<IHomeManager, HomeManager>();
         services.AddScoped<INotificationManager, NotificationManager>();
         services.AddScoped<IUpcomingManager, UpcomingManager>();
+        services.AddScoped<IReportManager, ReportManager>();
     }
 
     public TInterface CreateManager<TInterface>() where TInterface : class =>

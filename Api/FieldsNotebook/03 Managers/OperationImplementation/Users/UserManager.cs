@@ -1,4 +1,5 @@
 using Accessors.Users;
+using Common.Errors;
 using Common.Users;
 using DataContract.Me;
 using DataContract.Users;
@@ -38,6 +39,36 @@ namespace Managers.Users
                 settings.EmailEnabled,
                 settings.SmsEnabled,
                 user.Projects.Select(p => ToProjectResponse(p, user.Crews)).ToList());
+        }
+
+        public async Task<UserSettingsResponse?> UpdateSettingsAsync(int userId, UserSettingsRequest request, CancellationToken cancellationToken)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(userId, 1);
+            var change = ToSettingsChange(request);
+
+            var user = await userAccessor.GetUserAsync(userId, cancellationToken);
+            if (user is not { IsActive: true })
+            {
+                return null;
+            }
+
+            var saved = await userAccessor.SaveSettingsAsync(userId, change, cancellationToken);
+            return new UserSettingsResponse(saved.ThemePreference, saved.EmailEnabled, saved.SmsEnabled);
+        }
+
+        private static UserSettingsChangeRecord ToSettingsChange(UserSettingsRequest request)
+        {
+            if (request is { ThemePreference: null, EmailEnabled: null, SmsEnabled: null })
+            {
+                throw new InvalidRequestException("Choose a setting to change.");
+            }
+
+            if (request.ThemePreference is { } theme && !ThemePreferences.IsKnown(theme))
+            {
+                throw new InvalidRequestException("Appearance must be System, Light, or Dark.");
+            }
+
+            return new UserSettingsChangeRecord(request.ThemePreference, request.EmailEnabled, request.SmsEnabled);
         }
 
         private static CurrentUserProjectResponse ToProjectResponse(UserProjectRecord project, IReadOnlyList<CrewLeadRecord> crews)
