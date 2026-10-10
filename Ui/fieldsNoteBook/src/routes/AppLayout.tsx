@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { getProjectById } from "@/api/projects";
 import { isAbortError, isApiError } from "@/api/errors";
-import { getUser, setActiveProject } from "@/api/users";
+import { getUser, getUserOnProject } from "@/api/users";
 import { Button } from "@/components/common/Button";
 import { AppShell } from "@/components/layout/AppShell";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -115,16 +114,14 @@ function WorkspaceLoader({ userId }: { userId: number }) {
     setIsSwitchingProject(true);
     setSwitchError(null);
 
-    const load = async () => {
-      const user = await setActiveProject(userId, projectId);
-      const project = await getProjectById(user.activeProjectId);
-
-      return { user, project };
-    };
-
-    load()
-      .then(({ user, project }) =>
-        setSession({ attempt, status: "ready", user, project }),
+    getUserOnProject(userId, projectId)
+      .then((user) =>
+        setSession({
+          attempt,
+          status: "ready",
+          user,
+          project: activeProjectOf(user),
+        }),
       )
       .catch((error: unknown) => {
         setSwitchError(isApiError(error) ? error.message : SWITCH_FAILED);
