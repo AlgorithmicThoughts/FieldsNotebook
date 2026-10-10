@@ -8,4 +8,5 @@
   <Project Path="06 Common/Common.csproj" />
   <Project Path="07 Database/Database.csproj" />
   <Project Path="08 Accessors/Accessors.csproj" />
+  <Project Path="09 Tests/Tests.csproj" />
 </Solution>
