@@ -42,7 +42,7 @@ namespace FieldsNotebook.Controllers
                 Status = StatusCodes.Status404NotFound,
                 Title = "That notice is not available in Field Notebook.",
             },
-            InvalidUserSettingsException => new ProblemDetails
+            InvalidRequestException => new ProblemDetails
             {
                 Status = StatusCodes.Status400BadRequest,
                 Title = exception.Message,
