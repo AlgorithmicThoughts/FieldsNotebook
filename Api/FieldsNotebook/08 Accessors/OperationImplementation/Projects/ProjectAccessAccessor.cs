@@ -10,11 +10,11 @@ namespace Accessors.Projects
         public async Task<ProjectAccessRecord?> GetProjectAccessAsync(int userId, int projectId, CancellationToken cancellationToken)
         {
             var access = await (
-                from up in context.UserProjects
-                join u in context.Users on up.UserId equals u.Id
-                join p in context.Projects on up.ProjectId equals p.Id
-                join ur in context.UserRoles on new { up.UserId, up.ProjectId } equals new { ur.UserId, ur.ProjectId }
-                join r in context.Roles on ur.RoleId equals r.Id
+                from up in context.UserProjects.AsNoTracking()
+                join u in context.Users.AsNoTracking() on up.UserId equals u.Id
+                join p in context.Projects.AsNoTracking() on up.ProjectId equals p.Id
+                join ur in context.UserRoles.AsNoTracking() on new { up.UserId, up.ProjectId } equals new { ur.UserId, ur.ProjectId }
+                join r in context.Roles.AsNoTracking() on ur.RoleId equals r.Id
                 where up.UserId == userId && up.ProjectId == projectId
                       && up.IsActive && u.IsActive && p.IsActive && ur.IsActive && r.IsActive
                 select new { ProjectName = p.Name, RoleName = r.Name })
@@ -24,7 +24,7 @@ namespace Accessors.Projects
                 return null;
             }
 
-            var crews = await context.Crew
+            var crews = await context.Crew.AsNoTracking()
                 .Where(c => c.ProjectId == projectId && c.IsActive
                             && (c.ForemanLeadId == userId || c.SuperintendentUserId == userId))
                 .OrderBy(c => c.Name)

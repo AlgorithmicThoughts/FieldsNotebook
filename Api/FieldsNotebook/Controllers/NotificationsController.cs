@@ -1,34 +1,33 @@
-using System.ComponentModel.DataAnnotations;
 using DataContract.Notifications;
 using Managers.Notifications;
+using Managers;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace FieldsNotebook.Controllers
 {
     [ApiController]
     [Route("api/projects/{projectId}/notifications")]
-    public class NotificationsController(INotificationManager notificationManager) : ControllerBase
+    public class NotificationsController(ManagerFactory managerFactory) : ControllerBase
     {
         [HttpGet(Name = "GetNotifications")]
         [ProducesResponseType<NotificationListResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public Task<NotificationListResponse> GetNotifications(
-            [FromRoute, Range(1, int.MaxValue)] int projectId,
-            [FromHeader(Name = DemoIdentity.HeaderName), BindRequired, Range(1, int.MaxValue)] int demoUserId,
-            CancellationToken cancellationToken) =>
-            notificationManager.GetNotificationsAsync(demoUserId, projectId, cancellationToken);
+        public Task<NotificationListResponse> GetNotifications(int projectId)
+        {
+            var manager = managerFactory.CreateManager<INotificationManager>();
+            return manager.GetNotificationsAsync(DemoIdentity.GetUserId(HttpContext), projectId, HttpContext.RequestAborted);
+        }
 
         [HttpGet("unread-count", Name = "GetUnreadNotificationCount")]
         [ProducesResponseType<UnreadNotificationCountResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public Task<UnreadNotificationCountResponse> GetUnreadCount(
-            [FromRoute, Range(1, int.MaxValue)] int projectId,
-            [FromHeader(Name = DemoIdentity.HeaderName), BindRequired, Range(1, int.MaxValue)] int demoUserId,
-            CancellationToken cancellationToken) =>
-            notificationManager.GetUnreadCountAsync(demoUserId, projectId, cancellationToken);
+        public Task<UnreadNotificationCountResponse> GetUnreadCount(int projectId)
+        {
+            var manager = managerFactory.CreateManager<INotificationManager>();
+            return manager.GetUnreadCountAsync(DemoIdentity.GetUserId(HttpContext), projectId, HttpContext.RequestAborted);
+        }
 
         [HttpPost("{notificationId}/read", Name = "MarkNotificationRead")]
         [ProducesResponseType<NotificationReadResponse>(StatusCodes.Status200OK)]
@@ -36,10 +35,11 @@ namespace FieldsNotebook.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public Task<NotificationReadResponse> MarkRead(
-            [FromRoute, Range(1, int.MaxValue)] int projectId,
-            [FromRoute, Range(1, int.MaxValue)] int notificationId,
-            [FromHeader(Name = DemoIdentity.HeaderName), BindRequired, Range(1, int.MaxValue)] int demoUserId,
-            CancellationToken cancellationToken) =>
-            notificationManager.MarkReadAsync(demoUserId, projectId, notificationId, cancellationToken);
+            int projectId,
+            int notificationId)
+        {
+            var manager = managerFactory.CreateManager<INotificationManager>();
+            return manager.MarkReadAsync(DemoIdentity.GetUserId(HttpContext), projectId, notificationId, HttpContext.RequestAborted);
+        }
     }
 }

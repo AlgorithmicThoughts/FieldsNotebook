@@ -42,6 +42,11 @@ namespace FieldsNotebook.Controllers
                 Status = StatusCodes.Status404NotFound,
                 Title = "That notice is not available in Field Notebook.",
             },
+            ArgumentOutOfRangeException => new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Request IDs must be greater than zero.",
+            },
             _ => null,
         };
     }
