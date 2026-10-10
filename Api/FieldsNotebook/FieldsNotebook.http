@@ -4,3 +4,8 @@ GET {{FieldsNotebook_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+GET {{FieldsNotebook_HostAddress}}/api/users/1
+Accept: application/json
+
+###
