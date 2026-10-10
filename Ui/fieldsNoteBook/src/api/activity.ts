@@ -14,6 +14,7 @@ function toEntry(row: ActivityEventRow): ActivityEntry {
     title: describeActivityEvent(row.EventType),
     detail: [actor?.DisplayName, delay?.Title].filter(Boolean).join(' · '),
     timeLabel: formatProjectTime(row.CreatedAt),
+    createdAt: row.CreatedAt,
     delayNumber: delay?.Number ?? '',
   }
 }

@@ -43,6 +43,13 @@ export function formatProjectTime(value: Date | string): string {
   return clockTime.format(new Date(value))
 }
 
+/** "08:42 AM" for a time today in project time; "7 October · 09:30 AM" for any other day. */
+export function formatProjectEventTime(value: Date | string, now: Date = new Date()): string {
+  const time = formatProjectTime(value)
+
+  return projectDaysBetween(now, value) === 0 ? time : `${dayAndMonth.format(new Date(value))} · ${time}`
+}
+
 /** "Today · 7 October", "Tomorrow · 8 October", or "Friday · 9 October". */
 export function formatProjectDayLabel(value: Date | string, now: Date = new Date()): string {
   const date = new Date(value)

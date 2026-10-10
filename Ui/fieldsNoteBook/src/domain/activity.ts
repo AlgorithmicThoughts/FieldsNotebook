@@ -4,8 +4,10 @@ export interface ActivityEntry {
   id: string
   title: string
   detail: string
-  /** ActivityEvents.CreatedAt in the project's local time. */
+  /** ActivityEvents.CreatedAt in project time, with the date when it is not today. */
   timeLabel: string
+  /** ActivityEvents.CreatedAt, ISO 8601 UTC. */
+  createdAt: string
   /** Delays.Number that the event belongs to. */
   delayNumber: string
 }

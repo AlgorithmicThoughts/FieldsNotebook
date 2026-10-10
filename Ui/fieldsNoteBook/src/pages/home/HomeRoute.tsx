@@ -12,7 +12,7 @@ import { formatProjectDate, formatProjectTime } from '@/lib/projectTime'
 import { useWorkspace } from '@/routes/useWorkspace'
 import { HomePage } from './HomePage'
 import { HomeSkeleton } from './components/HomeSkeleton'
-import { toAdvanceNotice, toHomeMetrics } from './homeView'
+import { toActivityBadgeLabel, toAdvanceNotice, toHomeMetrics } from './homeView'
 
 interface HomeData {
   home: ProjectHome
@@ -127,6 +127,7 @@ export function HomeRoute() {
         metrics={toHomeMetrics(home.metrics)}
         attentionDelays={home.attentionDelays}
         activityEntries={home.recentActivity}
+        activityBadgeLabel={toActivityBadgeLabel(home.recentActivity, fetchedAt)}
         lastCheckedLabel={formatProjectTime(fetchedAt)}
         onReportDelay={() => setIsReportOpen(true)}
         onOpenDelay={(delayNumber) => navigate(`/tracking?delay=${delayNumber}`)}

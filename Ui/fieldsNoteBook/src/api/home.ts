@@ -1,6 +1,6 @@
 import { describeActivityEvent, type ActivityEntry } from '@/domain/activity'
 import type { DelaySummary } from '@/domain/delays'
-import { formatProjectTime } from '@/lib/projectTime'
+import { formatProjectEventTime } from '@/lib/projectTime'
 import { apiGet } from './client'
 import type { RequestOptions } from './types'
 
@@ -36,12 +36,13 @@ interface ProjectHomeResponse extends Omit<ProjectHome, 'recentActivity'> {
   recentActivity: ActivityEntryResponse[]
 }
 
-function toEntry(event: ActivityEntryResponse): ActivityEntry {
+function toEntry(event: ActivityEntryResponse, now: Date): ActivityEntry {
   return {
     id: String(event.id),
     title: describeActivityEvent(event.eventType),
     detail: [event.actorName, event.delayTitle].filter(Boolean).join(' · '),
-    timeLabel: formatProjectTime(event.createdAt),
+    timeLabel: formatProjectEventTime(event.createdAt, now),
+    createdAt: event.createdAt,
     delayNumber: event.delayNumber,
   }
 }
@@ -53,5 +54,7 @@ function toEntry(event: ActivityEntryResponse): ActivityEntry {
 export async function getProjectHome(projectId: number, options?: RequestOptions): Promise<ProjectHome> {
   const home = await apiGet<ProjectHomeResponse>(`/api/projects/${projectId}/home`, options)
 
-  return { ...home, recentActivity: home.recentActivity.map(toEntry) }
+  const now = new Date()
+
+  return { ...home, recentActivity: home.recentActivity.map((event) => toEntry(event, now)) }
 }

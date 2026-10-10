@@ -1,7 +1,8 @@
 import { CirclePause, ClipboardCheck, Users } from 'lucide-react'
 import type { HomeMetricCounts } from '@/api/home'
+import type { ActivityEntry } from '@/domain/activity'
 import type { DelaySummary } from '@/domain/delays'
-import { formatProjectDayLabel, formatProjectTime } from '@/lib/projectTime'
+import { formatProjectDayLabel, formatProjectTime, projectDaysBetween } from '@/lib/projectTime'
 import type { AdvanceNotice } from './components/AdvanceNoticeHero'
 import type { HomeMetric } from './components/MetricCard'
 
@@ -37,4 +38,9 @@ export function toAdvanceNotice(notice: DelaySummary | null, now: Date = new Dat
     expectedReadyTimeLabel: formatProjectTime(notice.expectedReadyAt),
     expectedReadyDayLabel: formatProjectDayLabel(notice.expectedReadyAt, now),
   }
+}
+
+/** "Today" only when every entry happened today in project time. */
+export function toActivityBadgeLabel(entries: ActivityEntry[], now: Date = new Date()): string {
+  return entries.every((entry) => projectDaysBetween(now, entry.createdAt) === 0) ? 'Today' : 'Recent'
 }
