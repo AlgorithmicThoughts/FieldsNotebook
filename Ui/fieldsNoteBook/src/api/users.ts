@@ -1,20 +1,7 @@
-import type { CurrentUser, RoleName, ThemePreference, UserCrew, UserProject } from '@/domain/users'
-import { apiGet, mockRequest } from './client'
+import type { CurrentUser, RoleName, ThemePreference, UserCrew } from '@/domain/users'
+import { apiGet, apiPatch } from './client'
 import { ApiError, isApiError } from './errors'
-import { CREWS, DISTRICTS, PROJECTS, ROLES, USERS, USER_PROJECTS, USER_ROLES, USER_SETTINGS } from './fixtures'
-import type { RequestOptions, UserRow, UserSettingsRow } from './types'
-
-interface UserSettingsValues {
-  themePreference: ThemePreference
-  emailEnabled: boolean
-  smsEnabled: boolean
-}
-
-const DEFAULT_SETTINGS: UserSettingsValues = {
-  themePreference: 'System',
-  emailEnabled: true,
-  smsEnabled: false,
-}
+import type { RequestOptions } from './types'
 
 function initialsOf(displayName: string): string {
   const parts = displayName.trim().split(/\s+/)
@@ -22,104 +9,6 @@ function initialsOf(displayName: string): string {
   const last = parts.length > 1 ? (parts.at(-1)?.charAt(0) ?? '') : ''
 
   return (first + last).toUpperCase()
-}
-
-function projectsOf(userId: number): UserProject[] {
-  return USER_PROJECTS.filter((row) => row.UserId === userId && row.IsActive)
-    .map((row) => PROJECTS.find((project) => project.Id === row.ProjectId))
-    .filter((project) => project !== undefined)
-    .map((project) => ({
-      id: project.Id,
-      name: project.Name,
-      code: project.Code,
-      districtName: DISTRICTS.find((district) => district.Id === project.DistrictId)?.Name ?? null,
-    }))
-}
-
-/**
- * A user holds a different role in different projects, so the role is only
- * meaningful alongside the active project.
- */
-function roleNameOf(userId: number, projectId: number): RoleName {
-  const userRole = USER_ROLES.find(
-    (row) => row.UserId === userId && row.ProjectId === projectId && row.IsActive,
-  )
-  const role = userRole && ROLES.find((candidate) => candidate.Id === userRole.RoleId)
-
-  if (!role) {
-    throw new ApiError(500, 'Field Notebook could not read your role on this project.')
-  }
-
-  return role.Name
-}
-
-function crewOf(userId: number, projectId: number): UserCrew {
-  const crew = CREWS.find(
-    (candidate) =>
-      candidate.ProjectId === projectId &&
-      (candidate.ForemanLeadId === userId || candidate.SuperintendentUserId === userId),
-  )
-
-  if (crew === undefined) {
-    throw new ApiError(500, 'Field Notebook could not read your crew on this project.')
-  }
-
-  return { id: crew.Id, name: crew.Name }
-}
-
-function settingsOf(userId: number): UserSettingsValues {
-  const settings = USER_SETTINGS.find((row) => row.UserId === userId)
-
-  if (settings === undefined) {
-    return DEFAULT_SETTINGS
-  }
-
-  return {
-    themePreference: settings.ThemePreference,
-    emailEnabled: settings.EmailEnabled,
-    smsEnabled: settings.SmsEnabled,
-  }
-}
-
-/** The mock settings path has no session, so it answers for the first project. */
-function activeProjectOf(projects: UserProject[]): UserProject {
-  const project = projects[0]
-
-  if (project === undefined) {
-    throw new ApiError(404, 'You are not assigned to a project in Field Notebook.')
-  }
-
-  return project
-}
-
-function toCurrentUser(row: UserRow): CurrentUser {
-  const projects = projectsOf(row.Id)
-  const activeProject = activeProjectOf(projects)
-  const crew = crewOf(row.Id, activeProject.id)
-  const settings = settingsOf(row.Id)
-
-  return {
-    id: row.Id,
-    displayName: row.DisplayName,
-    initials: initialsOf(row.DisplayName),
-    email: row.Email,
-    phone: row.Phone,
-    roleName: roleNameOf(row.Id, activeProject.id),
-    crews: [crew],
-    activeProjectId: activeProject.id,
-    projects,
-    ...settings,
-  }
-}
-
-function userRowOf(userId: number): UserRow {
-  const row = USERS.find((candidate) => candidate.Id === userId)
-
-  if (row === undefined) {
-    throw new ApiError(404, 'That user is not available in Field Notebook.')
-  }
-
-  return row
 }
 
 /** GET /api/me */
@@ -238,36 +127,22 @@ export interface UserSettingsUpdate {
   smsEnabled?: boolean
 }
 
-/** Writes the fixture row in place, so a later read returns the saved values. */
-function writeSettings(userId: number, update: UserSettingsUpdate): void {
-  const current = settingsOf(userId)
-  const row: UserSettingsRow = {
-    UserId: userId,
-    ThemePreference: update.themePreference ?? current.themePreference,
-    EmailEnabled: update.emailEnabled ?? current.emailEnabled,
-    SmsEnabled: update.smsEnabled ?? current.smsEnabled,
-  }
-  const index = USER_SETTINGS.findIndex((candidate) => candidate.UserId === userId)
-
-  if (index === -1) {
-    USER_SETTINGS.push(row)
-    return
-  }
-
-  USER_SETTINGS[index] = row
+/** PATCH /api/me/settings answers with the saved row. */
+export interface UserSettings {
+  themePreference: ThemePreference
+  emailEnabled: boolean
+  smsEnabled: boolean
 }
 
-/** Saves the changed preferences and returns the refreshed user. */
+/**
+ * Saves only the preferences in `settings`, so a theme save and a channel save
+ * in flight together cannot undo each other. The API identifies the user from
+ * the request, so `userId` is not sent.
+ */
 export async function updateUserSettings(
-  userId: number,
+  _userId: number,
   settings: UserSettingsUpdate,
   options?: RequestOptions,
-): Promise<CurrentUser> {
-  return mockRequest(options, () => {
-    const row = userRowOf(userId)
-
-    writeSettings(userId, settings)
-
-    return toCurrentUser(row)
-  })
+): Promise<UserSettings> {
+  return apiPatch<UserSettings>('/api/me/settings', settings, options)
 }

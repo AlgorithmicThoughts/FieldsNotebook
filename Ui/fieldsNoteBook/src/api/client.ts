@@ -74,9 +74,13 @@ const DEMO_USER_HEADER = 'X-Demo-User-Id'
 
 const UNREACHABLE = 'The request did not reach Field Notebook. Try again.'
 
-function requestHeaders(): Record<string, string> {
+function requestHeaders(hasBody: boolean): Record<string, string> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   const session = readAuthSession()
+
+  if (hasBody) {
+    headers['Content-Type'] = 'application/json'
+  }
 
   if (session !== null) {
     headers[DEMO_USER_HEADER] = String(session.user.userId)
@@ -100,11 +104,21 @@ async function problemTitle(response: Response): Promise<string> {
  * same AbortError the mock raises; any other failure becomes an ApiError whose
  * message a page can show as it is.
  */
-async function apiRequest<T>(method: 'GET' | 'POST', path: string, options?: RequestOptions): Promise<T> {
+async function apiRequest<T>(
+  method: 'GET' | 'POST' | 'PATCH',
+  path: string,
+  options?: RequestOptions,
+  body?: unknown,
+): Promise<T> {
   let response: Response
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { method, headers: requestHeaders(), signal: options?.signal })
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: requestHeaders(body !== undefined),
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: options?.signal,
+    })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error
@@ -127,4 +141,9 @@ export function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
 /** A POST with no body; the route names the action. */
 export function apiPost<T>(path: string, options?: RequestOptions): Promise<T> {
   return apiRequest<T>('POST', path, options)
+}
+
+/** A PATCH whose JSON body carries only the fields being changed. */
+export function apiPatch<T>(path: string, body: unknown, options?: RequestOptions): Promise<T> {
+  return apiRequest<T>('PATCH', path, options, body)
 }

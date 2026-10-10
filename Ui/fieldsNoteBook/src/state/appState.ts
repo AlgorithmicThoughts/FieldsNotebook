@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { ThemePreferenceState } from './useThemePreference'
+import type { UserSettingsState } from './useUserSettings'
 import type { UnreadNoticesState } from './useUnreadNotices'
 
 /**
@@ -9,7 +9,7 @@ import type { UnreadNoticesState } from './useUnreadNotices'
  * means writing its hook, widening this union, and spreading the hook result
  * into the provider value; existing concerns do not change.
  */
-export type AppState = ThemePreferenceState & UnreadNoticesState
+export type AppState = UserSettingsState & UnreadNoticesState
 
 export const AppStateContext = createContext<AppState | null>(null)
 

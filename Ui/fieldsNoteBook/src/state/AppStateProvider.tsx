@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { CurrentUser } from '@/domain/users'
 import { AppStateContext, type AppState } from './appState'
-import { useThemePreference } from './useThemePreference'
+import { useUserSettings } from './useUserSettings'
 import { useUnreadNotices } from './useUnreadNotices'
 
 interface AppStateProviderProps {
@@ -11,9 +11,9 @@ interface AppStateProviderProps {
 }
 
 export function AppStateProvider({ user, children }: AppStateProviderProps) {
-  const themePreference = useThemePreference(user)
+  const userSettings = useUserSettings(user)
   const unreadNotices = useUnreadNotices(user)
-  const state: AppState = { ...themePreference, ...unreadNotices }
+  const state: AppState = { ...userSettings, ...unreadNotices }
 
   return <AppStateContext value={state}>{children}</AppStateContext>
 }
