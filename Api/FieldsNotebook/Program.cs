@@ -7,10 +7,12 @@ using Accessors.Delays;
 using Accessors.Notifications;
 using Accessors.Projects;
 using Accessors.Users;
+using Accessors.WorkItems;
 using Database;
 using FieldsNotebook.Controllers;
 using Managers.Home;
 using Managers.Notifications;
+using Managers.Upcoming;
 using Managers.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,14 +33,16 @@ builder.Services.AddScoped<IProjectAccessAccessor, ProjectAccessAccessor>();
 builder.Services.AddScoped<IDelayAccessor, DelayAccessor>();
 builder.Services.AddScoped<IActivityAccessor, ActivityAccessor>();
 builder.Services.AddScoped<INotificationAccessor, NotificationAccessor>();
+builder.Services.AddScoped<IWorkItemAccessor, WorkItemAccessor>();
 builder.Services.AddScoped<IUserManager, UserManager>();
 builder.Services.AddScoped<IHomeManager, HomeManager>();
 builder.Services.AddScoped<INotificationManager, NotificationManager>();
+builder.Services.AddScoped<IUpcomingManager, UpcomingManager>();
 
 // Development only: lets the Vite dev server call the API from the browser.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.WithOrigins(allowedOrigins).WithMethods("GET").WithHeaders(DemoIdentity.HeaderName)));
+    policy.WithOrigins(allowedOrigins).WithMethods("GET", "POST").WithHeaders(DemoIdentity.HeaderName)));
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();

@@ -16,8 +16,7 @@ namespace FieldsNotebook.Controllers
                 return true;
             }
 
-            var problem = ToProblem(exception);
-            if (problem is null)
+            if (ToProblem(exception) is not { } problem)
             {
                 return false;
             }
@@ -38,10 +37,10 @@ namespace FieldsNotebook.Controllers
                 Status = StatusCodes.Status403Forbidden,
                 Title = "You do not have access to this project.",
             },
-            ArgumentOutOfRangeException => new ProblemDetails
+            NotificationNotFoundException => new ProblemDetails
             {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Project and user IDs must be greater than zero.",
+                Status = StatusCodes.Status404NotFound,
+                Title = "That notice is not available in Field Notebook.",
             },
             _ => null,
         };
