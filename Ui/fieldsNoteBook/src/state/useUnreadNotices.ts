@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isAbortError, isApiError } from '@/api/errors'
-import { getNotificationsByUserId, markNotificationRead } from '@/api/notifications'
+import { getNotificationsByUserId, getUnreadNotificationCount, markNotificationRead } from '@/api/notifications'
 import type { NotificationSummary } from '@/domain/notifications'
 import type { CurrentUser } from '@/domain/users'
 
@@ -21,7 +21,10 @@ type LoadedNotices =
 
 export interface UnreadNoticesState {
   notices: NoticesView
-  /** Unread total for the active project, shown beside the sidebar item. */
+  /**
+   * Unread total for the active project from the API, shown by the shell's bell
+   * and sidebar badge. Zero while it loads or when it fails, so no stale badge.
+   */
   unreadNoticeCount: number
   /** Message from the last failed read. Opening the delay never depends on it. */
   noticeReadError: string | null
@@ -34,14 +37,15 @@ export interface UnreadNoticesState {
 }
 
 /**
- * The signed-in user's notices for the active project. The shell reads the
- * unread total for the sidebar and the notifications page reads the list, so
- * both come from one copy of the data.
+ * The signed-in user's notices for the active project. The shell's unread
+ * total comes from the API's count; the notices list still comes from the
+ * mock until its endpoint exists, so the notifications page counts its own list.
  */
 export function useUnreadNotices(user: CurrentUser): UnreadNoticesState {
   const [loaded, setLoaded] = useState<LoadedNotices | null>(null)
   const [reloadCount, setReloadCount] = useState(0)
   const [noticeReadError, setNoticeReadError] = useState<string | null>(null)
+  const [unreadCount, setUnreadCount] = useState<{ key: string; value: number } | null>(null)
   const userId = user.id
   const projectId = user.activeProjectId
   const key = `${userId}:${projectId}:${reloadCount}`
@@ -71,9 +75,23 @@ export function useUnreadNotices(user: CurrentUser): UnreadNoticesState {
     return () => controller.abort()
   }, [userId, projectId, key])
 
+  // Requested alongside the list; a failure only hides the badge.
+  useEffect(() => {
+    const controller = new AbortController()
+
+    getUnreadNotificationCount(projectId, { signal: controller.signal })
+      .then((value) => {
+        if (!controller.signal.aborted) {
+          setUnreadCount({ key, value })
+        }
+      })
+      .catch(() => undefined)
+
+    return () => controller.abort()
+  }, [projectId, key])
+
   const notices: NoticesView = loaded !== null && loaded.key === key ? loaded : { status: 'loading' }
-  const unreadNoticeCount =
-    notices.status === 'ready' ? notices.notices.filter((notice) => !notice.isRead).length : 0
+  const unreadNoticeCount = unreadCount !== null && unreadCount.key === key ? unreadCount.value : 0
 
   function markNoticeRead(notificationId: number) {
     setNoticeReadError(null)
