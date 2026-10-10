@@ -1,5 +1,7 @@
+using Accessors.Activity;
 using Accessors.Delays;
 using Accessors.Projects;
+using Common.Activity;
 using Common.Delays;
 using Common.Errors;
 using Common.Projects;
@@ -20,6 +22,12 @@ namespace Tests.Managers
 
         private readonly Mock<IProjectAccessAccessor> _projectAccess = new();
         private readonly Mock<IDelayAccessor> _delays = new();
+        private readonly Mock<IActivityAccessor> _activity = new();
+
+        public HomeManagerTests() =>
+            _activity
+                .Setup(a => a.GetRecentActivityForCrewsAsync(It.IsAny<int>(), It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
 
         [Fact]
         public async Task GetHomeAsync_Foreman_BuildsMetricsListAndAdvanceNotice()
@@ -35,8 +43,16 @@ namespace Tests.Managers
                     [Impact(1, Welding, "Welding and Erection"), Impact(1, Coatings, "Coatings"), Impact(1, Welding, "Welding and Erection"),
                      Impact(2, Coatings, "Coatings")]));
 
+            var reopenedEvent = new ActivityEventRecord(42, "delay.reopened", "FN-006", "Bay 3 weld defect returns", "Priya Shah",
+                DelayStatusCodes.Resolved, DelayStatusCodes.Reopened, null, null, tomorrow.AddDays(-1));
+            _activity
+                .Setup(a => a.GetRecentActivityForCrewsAsync(ProjectId, It.IsAny<IReadOnlyCollection<int>>(), HomeManager.RecentActivityLimit, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([reopenedEvent]);
+
             var home = await CreateManager().GetHomeAsync(UserId, ProjectId, CancellationToken.None);
 
+            var entry = Assert.Single(home.RecentActivity);
+            Assert.Equal(("delay.reopened", "FN-006", "Priya Shah", "Reopened"), (entry.EventType, entry.DelayNumber, entry.ActorName, entry.ToStatusCode));
             Assert.Equal(1, home.Metrics.BlockingOurCrews);
             Assert.Equal(1, home.Metrics.CrewsWaitingOnUs);
             Assert.Equal(0, home.Metrics.ReadyToVerify);
@@ -79,6 +95,7 @@ namespace Tests.Managers
             var home = await CreateManager().GetHomeAsync(UserId, ProjectId, CancellationToken.None);
 
             Assert.Empty(home.AttentionDelays);
+            Assert.Empty(home.RecentActivity);
             Assert.Equal(0, home.Metrics.BlockingOurCrews);
             VerifyNoDelayRead();
         }
@@ -94,17 +111,22 @@ namespace Tests.Managers
             _projectAccess.Verify(a => a.GetProjectAccessAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
-        private HomeManager CreateManager() => new(_projectAccess.Object, _delays.Object);
+        private HomeManager CreateManager() => new(_projectAccess.Object, _delays.Object, _activity.Object);
 
         private void GrantAccess(string roleName, params CrewLeadRecord[] crews) =>
             _projectAccess
                 .Setup(a => a.GetProjectAccessAsync(UserId, ProjectId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ProjectAccessRecord(ProjectId, "Omaha Fabrication", roleName, crews));
 
-        private void VerifyNoDelayRead() =>
+        private void VerifyNoDelayRead()
+        {
             _delays.Verify(
                 a => a.GetActiveDelaysForCrewsAsync(It.IsAny<int>(), It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()),
                 Times.Never);
+            _activity.Verify(
+                a => a.GetRecentActivityForCrewsAsync(It.IsAny<int>(), It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
 
         private static ActiveDelayRecord Delay(
             int id, string number, int ownerCrewId, string ownerCrewName, string statusCode, string reportType, int cycles, DateTimeOffset? eta = null) =>

@@ -25,6 +25,8 @@ export interface HomePageProps {
   metrics: HomeMetric[]
   attentionDelays: DelaySummary[]
   activityEntries: ActivityEntry[]
+  /** "Today" or "Recent", depending on the entries' dates. */
+  activityBadgeLabel: string
   lastCheckedLabel: string
   onReportDelay?: () => void
   onOpenDelay?: (delayNumber: string) => void
@@ -42,6 +44,7 @@ export function HomePage({
   metrics,
   attentionDelays,
   activityEntries,
+  activityBadgeLabel,
   lastCheckedLabel,
   onReportDelay,
   onOpenDelay,
@@ -101,7 +104,7 @@ export function HomePage({
 
         <aside className="stack">
           <Card>
-            <CardHeading title="Latest handovers" action={<Badge label="Today" tone="outline" />} />
+            <CardHeading title="Latest handovers" action={<Badge label={activityBadgeLabel} tone="outline" />} />
             <ActivityTimeline entries={activityEntries} />
           </Card>
 

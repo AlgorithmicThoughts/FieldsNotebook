@@ -1,5 +1,7 @@
+using Accessors.Activity;
 using Accessors.Delays;
 using Accessors.Projects;
+using Common.Activity;
 using Common.Delays;
 using Common.Errors;
 using DataContract.Home;
@@ -8,8 +10,14 @@ using Engines.Delays;
 
 namespace Managers.Home
 {
-    public class HomeManager(IProjectAccessAccessor projectAccessAccessor, IDelayAccessor delayAccessor) : IHomeManager
+    public class HomeManager(
+        IProjectAccessAccessor projectAccessAccessor,
+        IDelayAccessor delayAccessor,
+        IActivityAccessor activityAccessor) : IHomeManager
     {
+        /// <summary>Home shows only the latest handovers; a full timeline belongs to the delay or activity screens.</summary>
+        public const int RecentActivityLimit = 5;
+
         public async Task<HomeResponse> GetHomeAsync(int userId, int projectId, CancellationToken cancellationToken)
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(userId, 1);
@@ -20,16 +28,24 @@ namespace Managers.Home
             var ourCrewIds = CrewCoverageEngine.GetCoveredCrews(access.RoleName, access.Crews)
                 .Select(c => c.CrewId)
                 .ToHashSet();
-            var active = ourCrewIds.Count == 0
-                ? ActiveDelaySet.Empty
-                : await delayAccessor.GetActiveDelaysForCrewsAsync(projectId, ourCrewIds, cancellationToken);
+            if (ourCrewIds.Count == 0)
+            {
+                return BuildHome(new ActiveDelayView(ActiveDelaySet.Empty, ourCrewIds), access.ProjectName, []);
+            }
 
-            var view = new ActiveDelayView(active, ourCrewIds);
-            return new HomeResponse(
-                BuildMetrics(view),
-                view.Delays.Select(d => ToSummary(d, view, access.ProjectName)).OrderByDescending(d => d.IsHighPriority).ToList(),
-                BuildAdvanceNotice(view));
+            // Sequential on purpose: both Accessors share this request's DbContext.
+            var active = await delayAccessor.GetActiveDelaysForCrewsAsync(projectId, ourCrewIds, cancellationToken);
+            var activity = await activityAccessor.GetRecentActivityForCrewsAsync(projectId, ourCrewIds, RecentActivityLimit, cancellationToken);
+
+            return BuildHome(new ActiveDelayView(active, ourCrewIds), access.ProjectName, activity);
         }
+
+        private static HomeResponse BuildHome(ActiveDelayView view, string projectName, IReadOnlyList<ActivityEventRecord> activity) =>
+            new(
+                BuildMetrics(view),
+                view.Delays.Select(d => ToSummary(d, view, projectName)).OrderByDescending(d => d.IsHighPriority).ToList(),
+                BuildAdvanceNotice(view),
+                activity.Select(ToActivityEntry).ToList());
 
         private static HomeMetricsResponse BuildMetrics(ActiveDelayView view)
         {
@@ -68,6 +84,10 @@ namespace Managers.Home
                 delay.LocationName,
                 projectName,
                 DelayRulesEngine.IsHighPriority(delay.CycleCount, delay.HasOpenCycle));
+
+        private static ActivityEntryResponse ToActivityEntry(ActivityEventRecord e) =>
+            new(e.Id, e.EventType, e.DelayNumber, e.DelayTitle, e.ActorName, e.FromStatusCode, e.ToStatusCode,
+                e.NewExpectedReadyAt, e.AffectedCrewName, e.CreatedAt);
 
         /// <summary>Active delays indexed by delay, from the point of view of the user's crews.</summary>
         private sealed class ActiveDelayView(ActiveDelaySet set, IReadOnlySet<int> ourCrewIds)

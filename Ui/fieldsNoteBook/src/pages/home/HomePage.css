@@ -203,6 +203,10 @@
 }
 
 /* Activity timeline */
+.timeline-empty {
+  padding: 0 22px 22px;
+}
+
 .timeline {
   display: grid;
   padding: 0 22px 20px;

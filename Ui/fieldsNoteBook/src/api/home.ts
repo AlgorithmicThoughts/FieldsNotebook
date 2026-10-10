@@ -5,6 +5,8 @@ export interface ProjectHome {
   metrics: ProjectHomeMetrics
   attentionDelays: DelaySummary[]
   advanceNotice: AdvanceNoticeDto | null
+  /** Newest events first, at most five. */
+  recentActivity: ActivityEntryDto[]
 }
 
 export interface ProjectHomeMetrics {
@@ -21,6 +23,24 @@ export interface AdvanceNoticeDto {
   blockedCrewNames: string[]
   /** UTC ISO timestamp; null until the responsible Superintendent gives an estimate. */
   expectedReadyAt: string | null
+}
+
+/** One workflow event; the client writes the timeline text. */
+export interface ActivityEntryDto {
+  id: number
+  /** ActivityEvents.EventType, such as delay.reopened. */
+  eventType: string
+  delayNumber: string
+  delayTitle: string
+  actorName: string
+  fromStatusCode: string | null
+  toStatusCode: string | null
+  /** UTC ISO timestamp of a new tentative completion time. */
+  newExpectedReadyAt: string | null
+  /** The affected crew of a handover check. */
+  affectedCrewName: string | null
+  /** UTC ISO timestamp. */
+  createdAt: string
 }
 
 export function projectHomePath(projectId: number): string {

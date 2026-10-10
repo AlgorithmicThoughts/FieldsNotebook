@@ -14,6 +14,10 @@ interface ActivityTimelineProps {
 }
 
 export function ActivityTimeline({ entries }: ActivityTimelineProps) {
+  if (!entries.length) {
+    return <p className="small muted timeline-empty">No recent activity for your crew.</p>
+  }
+
   return (
     <div className="timeline">
       {entries.map((entry) => (

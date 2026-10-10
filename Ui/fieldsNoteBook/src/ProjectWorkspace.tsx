@@ -8,8 +8,8 @@ import { toCrewLabel, toInitials } from './domain/users'
 import { useApiData } from './hooks/useApiData'
 import type { ResolvedTheme } from './hooks/useResolvedTheme'
 import { HomePage } from './pages/home/HomePage'
-import { toAdvanceNotice, toHomeMetrics } from './pages/home/homeContent'
-import { ACTIVITY_ENTRIES, HAS_UNREAD_NOTIFICATIONS, NAV_ITEMS } from './pages/home/homeData'
+import { toActivityBadgeLabel, toActivityEntries, toAdvanceNotice, toHomeMetrics } from './pages/home/homeContent'
+import { HAS_UNREAD_NOTIFICATIONS, NAV_ITEMS } from './pages/home/homeData'
 
 interface ProjectWorkspaceProps {
   user: CurrentUser
@@ -61,7 +61,8 @@ export function ProjectWorkspace({ user, project, loadedAt, theme, onThemeToggle
           advanceNotice={home.data.advanceNotice ? toAdvanceNotice(home.data.advanceNotice, home.loadedAt) : null}
           metrics={toHomeMetrics(home.data.metrics)}
           attentionDelays={home.data.attentionDelays}
-          activityEntries={ACTIVITY_ENTRIES}
+          activityEntries={toActivityEntries(home.data.recentActivity, home.loadedAt)}
+          activityBadgeLabel={toActivityBadgeLabel(home.data.recentActivity, home.loadedAt)}
           lastCheckedLabel={formatTimeLabel(home.loadedAt)}
         />
       ) : (

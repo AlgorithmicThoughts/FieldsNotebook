@@ -38,3 +38,16 @@ function relativeDayName(time: Date, now: Date): string {
 function startOfLocalDay(time: Date): number {
   return new Date(time.getFullYear(), time.getMonth(), time.getDate()).getTime()
 }
+
+/** "4:00 PM" for today; "October 7 · 9:30 AM" for another day. */
+export function formatEventTimeLabel(time: Date, now: Date): string {
+  if (startOfLocalDay(time) === startOfLocalDay(now)) {
+    return formatTimeLabel(time)
+  }
+  const date = time.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })
+  return `${date} · ${formatTimeLabel(time)}`
+}
+
+export function isSameLocalDay(time: Date, now: Date): boolean {
+  return startOfLocalDay(time) === startOfLocalDay(now)
+}

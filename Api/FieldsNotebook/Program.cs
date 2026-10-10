@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Accessors.Activity;
 using Accessors.Delays;
 using Accessors.Projects;
 using Accessors.Users;
@@ -20,6 +21,7 @@ builder.Services.AddDbContext<FieldNotebookContext>(options => options.UseSqlSer
 builder.Services.AddScoped<IUserAccessor, UserAccessor>();
 builder.Services.AddScoped<IProjectAccessAccessor, ProjectAccessAccessor>();
 builder.Services.AddScoped<IDelayAccessor, DelayAccessor>();
+builder.Services.AddScoped<IActivityAccessor, ActivityAccessor>();
 builder.Services.AddScoped<IUserManager, UserManager>();
 builder.Services.AddScoped<IHomeManager, HomeManager>();
 
