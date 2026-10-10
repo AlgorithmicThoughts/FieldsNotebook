@@ -1,0 +1,554 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 110;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		EBE961F7307AA5D400997007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EBE961DC307AA5D200997007 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EBE961E3307AA5D200997007;
+			remoteInfo = FieldsNotebook;
+		};
+		EBE96201307AA5D400997007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EBE961DC307AA5D200997007 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EBE961E3307AA5D200997007;
+			remoteInfo = FieldsNotebook;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		EBE961E4307AA5D200997007 /* FieldsNotebook.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FieldsNotebook.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EBE961F6307AA5D400997007 /* FieldsNotebookTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FieldsNotebookTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EBE96200307AA5D400997007 /* FieldsNotebookUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FieldsNotebookUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		EBE961E6307AA5D200997007 /* FieldsNotebook */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FieldsNotebook;
+			sourceTree = "<group>";
+		};
+		EBE961F9307AA5D400997007 /* FieldsNotebookTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FieldsNotebookTests;
+			sourceTree = "<group>";
+		};
+		EBE96203307AA5D400997007 /* FieldsNotebookUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FieldsNotebookUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		EBE961E1307AA5D200997007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		EBE961F3307AA5D400997007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		EBE961FD307AA5D400997007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		EBE961DB307AA5D200997007 = {
+			isa = PBXGroup;
+			children = (
+				EBE961E6307AA5D200997007 /* FieldsNotebook */,
+				EBE961F9307AA5D400997007 /* FieldsNotebookTests */,
+				EBE96203307AA5D400997007 /* FieldsNotebookUITests */,
+				EBE961E5307AA5D200997007 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		EBE961E5307AA5D200997007 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EBE961E4307AA5D200997007 /* FieldsNotebook.app */,
+				EBE961F6307AA5D400997007 /* FieldsNotebookTests.xctest */,
+				EBE96200307AA5D400997007 /* FieldsNotebookUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EBE961E3307AA5D200997007 /* FieldsNotebook */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EBE96208307AA5D400997007 /* Build configuration list for PBXNativeTarget "FieldsNotebook" */;
+			buildPhases = (
+				EBE961E0307AA5D200997007 /* Sources */,
+				EBE961E1307AA5D200997007 /* Frameworks */,
+				EBE961E2307AA5D200997007 /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				EBE961E6307AA5D200997007 /* FieldsNotebook */,
+			);
+			name = FieldsNotebook;
+			productName = FieldsNotebook;
+			productReference = EBE961E4307AA5D200997007 /* FieldsNotebook.app */;
+			productType = "com.apple.product-type.application";
+		};
+		EBE961F5307AA5D400997007 /* FieldsNotebookTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EBE9620B307AA5D400997007 /* Build configuration list for PBXNativeTarget "FieldsNotebookTests" */;
+			buildPhases = (
+				EBE961F2307AA5D400997007 /* Sources */,
+				EBE961F3307AA5D400997007 /* Frameworks */,
+				EBE961F4307AA5D400997007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EBE961F8307AA5D400997007 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				EBE961F9307AA5D400997007 /* FieldsNotebookTests */,
+			);
+			name = FieldsNotebookTests;
+			productName = FieldsNotebookTests;
+			productReference = EBE961F6307AA5D400997007 /* FieldsNotebookTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		EBE961FF307AA5D400997007 /* FieldsNotebookUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EBE9620E307AA5D400997007 /* Build configuration list for PBXNativeTarget "FieldsNotebookUITests" */;
+			buildPhases = (
+				EBE961FC307AA5D400997007 /* Sources */,
+				EBE961FD307AA5D400997007 /* Frameworks */,
+				EBE961FE307AA5D400997007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EBE96202307AA5D400997007 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				EBE96203307AA5D400997007 /* FieldsNotebookUITests */,
+			);
+			name = FieldsNotebookUITests;
+			productName = FieldsNotebookUITests;
+			productReference = EBE96200307AA5D400997007 /* FieldsNotebookUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		EBE961DC307AA5D200997007 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					EBE961E3307AA5D200997007 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					EBE961F5307AA5D400997007 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = EBE961E3307AA5D200997007;
+					};
+					EBE961FF307AA5D400997007 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = EBE961E3307AA5D200997007;
+					};
+				};
+			};
+			buildConfigurationList = EBE961DF307AA5D200997007 /* Build configuration list for PBXProject "FieldsNotebook" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = EBE961DB307AA5D200997007;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = EBE961E5307AA5D200997007 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EBE961E3307AA5D200997007 /* FieldsNotebook */,
+				EBE961F5307AA5D400997007 /* FieldsNotebookTests */,
+				EBE961FF307AA5D400997007 /* FieldsNotebookUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		EBE961E2307AA5D200997007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		EBE961F4307AA5D400997007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		EBE961FE307AA5D400997007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		EBE961E0307AA5D200997007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		EBE961F2307AA5D400997007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		EBE961FC307AA5D400997007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EBE961F8307AA5D400997007 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EBE961E3307AA5D200997007 /* FieldsNotebook */;
+			targetProxy = EBE961F7307AA5D400997007 /* PBXContainerItemProxy */;
+		};
+		EBE96202307AA5D400997007 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EBE961E3307AA5D200997007 /* FieldsNotebook */;
+			targetProxy = EBE96201307AA5D400997007 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		EBE96206307AA5D400997007 /* Debug configuration for PBXProject "FieldsNotebook" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		EBE96207307AA5D400997007 /* Release configuration for PBXProject "FieldsNotebook" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		EBE96209307AA5D400997007 /* Debug configuration for PBXNativeTarget "FieldsNotebook" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.codecat15.FieldsNotebook;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EBE9620A307AA5D400997007 /* Release configuration for PBXNativeTarget "FieldsNotebook" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.codecat15.FieldsNotebook;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		EBE9620C307AA5D400997007 /* Debug configuration for PBXNativeTarget "FieldsNotebookTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.codecat15.FieldsNotebookTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FieldsNotebook.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FieldsNotebook";
+			};
+			name = Debug;
+		};
+		EBE9620D307AA5D400997007 /* Release configuration for PBXNativeTarget "FieldsNotebookTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.codecat15.FieldsNotebookTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FieldsNotebook.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FieldsNotebook";
+			};
+			name = Release;
+		};
+		EBE9620F307AA5D400997007 /* Debug configuration for PBXNativeTarget "FieldsNotebookUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.codecat15.FieldsNotebookUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = FieldsNotebook;
+			};
+			name = Debug;
+		};
+		EBE96210307AA5D400997007 /* Release configuration for PBXNativeTarget "FieldsNotebookUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.codecat15.FieldsNotebookUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = FieldsNotebook;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		EBE961DF307AA5D200997007 /* Build configuration list for PBXProject "FieldsNotebook" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EBE96206307AA5D400997007 /* Debug configuration for PBXProject "FieldsNotebook" */,
+				EBE96207307AA5D400997007 /* Release configuration for PBXProject "FieldsNotebook" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		EBE96208307AA5D400997007 /* Build configuration list for PBXNativeTarget "FieldsNotebook" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EBE96209307AA5D400997007 /* Debug configuration for PBXNativeTarget "FieldsNotebook" */,
+				EBE9620A307AA5D400997007 /* Release configuration for PBXNativeTarget "FieldsNotebook" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		EBE9620B307AA5D400997007 /* Build configuration list for PBXNativeTarget "FieldsNotebookTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EBE9620C307AA5D400997007 /* Debug configuration for PBXNativeTarget "FieldsNotebookTests" */,
+				EBE9620D307AA5D400997007 /* Release configuration for PBXNativeTarget "FieldsNotebookTests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		EBE9620E307AA5D400997007 /* Build configuration list for PBXNativeTarget "FieldsNotebookUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EBE9620F307AA5D400997007 /* Debug configuration for PBXNativeTarget "FieldsNotebookUITests" */,
+				EBE96210307AA5D400997007 /* Release configuration for PBXNativeTarget "FieldsNotebookUITests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = EBE961DC307AA5D200997007 /* Project object */;
+	validationLevel = 1;
+}
