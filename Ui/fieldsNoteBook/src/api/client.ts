@@ -96,15 +96,15 @@ async function problemTitle(response: Response): Promise<string> {
 }
 
 /**
- * One GET against the Field Notebook API. Cancellation surfaces as the same
- * AbortError the mock raises; any other failure becomes an ApiError whose
+ * One request against the Field Notebook API. Cancellation surfaces as the
+ * same AbortError the mock raises; any other failure becomes an ApiError whose
  * message a page can show as it is.
  */
-export async function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
+async function apiRequest<T>(method: 'GET' | 'POST', path: string, options?: RequestOptions): Promise<T> {
   let response: Response
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { headers: requestHeaders(), signal: options?.signal })
+    response = await fetch(`${API_BASE_URL}${path}`, { method, headers: requestHeaders(), signal: options?.signal })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error
@@ -118,4 +118,13 @@ export async function apiGet<T>(path: string, options?: RequestOptions): Promise
   }
 
   return (await response.json()) as T
+}
+
+export function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
+  return apiRequest<T>('GET', path, options)
+}
+
+/** A POST with no body; the route names the action. */
+export function apiPost<T>(path: string, options?: RequestOptions): Promise<T> {
+  return apiRequest<T>('POST', path, options)
 }

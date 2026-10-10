@@ -66,10 +66,7 @@ function NoticesBody({ notices, channels, onRetry, onOpenDelay }: NoticesBodyPro
  */
 export function NotificationsPage() {
   const { user, project } = useWorkspace()
-  const { notices, noticeReadError, reloadNotices, markNoticeRead } = useAppState()
-  // Counted from the list shown here, which still comes from the mock.
-  const unreadNoticeCount =
-    notices.status === 'ready' ? notices.notices.filter((notice) => !notice.isRead).length : 0
+  const { notices, unreadNoticeCount, noticeReadError, reloadNotices, markNoticeRead } = useAppState()
   const navigate = useNavigate()
   const channels = noticeChannelsOf(user)
 

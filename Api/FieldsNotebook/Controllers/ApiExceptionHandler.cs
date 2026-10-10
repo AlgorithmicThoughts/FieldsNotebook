@@ -16,22 +16,33 @@ namespace FieldsNotebook.Controllers
                 return true;
             }
 
-            if (exception is not ProjectAccessDeniedException)
+            if (ToProblem(exception) is not { } problem)
             {
                 return false;
             }
 
-            httpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+            httpContext.Response.StatusCode = problem.Status!.Value;
             return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
             {
                 HttpContext = httpContext,
                 Exception = exception,
-                ProblemDetails = new ProblemDetails
-                {
-                    Status = StatusCodes.Status403Forbidden,
-                    Title = "You do not have access to this project.",
-                },
+                ProblemDetails = problem,
             });
         }
+
+        private static ProblemDetails? ToProblem(Exception exception) => exception switch
+        {
+            ProjectAccessDeniedException => new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = "You do not have access to this project.",
+            },
+            NotificationNotFoundException => new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "That notice is not available in Field Notebook.",
+            },
+            _ => null,
+        };
     }
 }

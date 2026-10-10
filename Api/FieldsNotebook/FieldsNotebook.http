@@ -27,3 +27,15 @@ Accept: application/json
 X-Demo-User-Id: 3
 
 ###
+
+GET {{FieldsNotebook_HostAddress}}/api/projects/1/notifications
+Accept: application/json
+X-Demo-User-Id: 3
+
+###
+
+POST {{FieldsNotebook_HostAddress}}/api/projects/1/notifications/1/read
+Accept: application/json
+X-Demo-User-Id: 3
+
+###
