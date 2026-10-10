@@ -9,12 +9,12 @@ namespace Accessors.Activity
         public async Task<IReadOnlyList<ActivityEventRecord>> GetRecentActivityForCrewsAsync(
             int projectId, IReadOnlyCollection<int> crewIds, int limit, CancellationToken cancellationToken) =>
             await (
-                from e in context.ActivityEvents
-                join d in context.Delays on e.DelayId equals d.Id
-                join actor in context.Users on e.ActorUserId equals actor.Id
+                from e in context.ActivityEvents.AsNoTracking()
+                join d in context.Delays.AsNoTracking() on e.DelayId equals d.Id
+                join actor in context.Users.AsNoTracking() on e.ActorUserId equals actor.Id
                 where e.ProjectId == projectId
                       && (crewIds.Contains(d.OwnerCrewId)
-                          || context.DelayImpacts.Any(i => i.DelayId == d.Id && crewIds.Contains(i.BlockedCrewId)))
+                          || context.DelayImpacts.AsNoTracking().Any(i => i.DelayId == d.Id && crewIds.Contains(i.BlockedCrewId)))
                 orderby e.CreatedAt descending, e.Id descending
                 select new ActivityEventRecord(
                     e.Id,
@@ -22,11 +22,11 @@ namespace Accessors.Activity
                     d.Number,
                     d.Title,
                     actor.DisplayName,
-                    context.DelayStatus.Where(s => s.Id == e.FromDelayStatusId).Select(s => s.Code).FirstOrDefault(),
-                    context.DelayStatus.Where(s => s.Id == e.ToDelayStatusId).Select(s => s.Code).FirstOrDefault(),
+                    context.DelayStatus.AsNoTracking().Where(s => s.Id == e.FromDelayStatusId).Select(s => s.Code).FirstOrDefault(),
+                    context.DelayStatus.AsNoTracking().Where(s => s.Id == e.ToDelayStatusId).Select(s => s.Code).FirstOrDefault(),
                     e.NewExpectedReadyAt,
-                    (from i in context.DelayImpacts
-                     join crew in context.Crew on i.BlockedCrewId equals crew.Id
+                    (from i in context.DelayImpacts.AsNoTracking()
+                     join crew in context.Crew.AsNoTracking() on i.BlockedCrewId equals crew.Id
                      where i.Id == e.DelayImpactId
                      select crew.Name).FirstOrDefault(),
                     e.CreatedAt))

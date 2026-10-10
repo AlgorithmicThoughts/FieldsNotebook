@@ -13,7 +13,10 @@ public class DelayController(ManagerFactory managerFactory) : ControllerBase
     [ProducesResponseType<TrackingResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public Task<TrackingResponse> GetProjectTrackingDetailsAsync([FromRoute] int projectId) =>
-        managerFactory.CreateManager<IDelayManager>().GetProjectTrackingDetailsAsync(
+    public Task<TrackingResponse> GetProjectTrackingDetailsAsync(int projectId)
+    {
+        var manager = managerFactory.CreateManager<IDelayManager>();
+        return manager.GetProjectTrackingDetailsAsync(
             DemoIdentity.GetUserId(HttpContext), projectId, HttpContext.RequestAborted);
+    }
 }

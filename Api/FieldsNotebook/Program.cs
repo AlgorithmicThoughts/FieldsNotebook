@@ -1,19 +1,7 @@
 using System.Text.Json.Serialization;
-using Accessors;
 using Managers;
-using Managers.Delays;
-using Accessors.Activity;
-using Accessors.Delays;
-using Accessors.Notifications;
-using Accessors.Projects;
-using Accessors.Users;
-using Accessors.WorkItems;
 using Database;
 using FieldsNotebook.Controllers;
-using Managers.Home;
-using Managers.Notifications;
-using Managers.Upcoming;
-using Managers.Users;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,19 +13,7 @@ var connectionString = builder.Configuration.GetConnectionString("FieldNotebook"
     ?? throw new InvalidOperationException("Connection string 'FieldNotebook' is not configured.");
 builder.Services.AddDbContext<FieldNotebookContext>(options => options.UseSqlServer(connectionString));
 
-builder.Services.AddScoped<ManagerFactory>();
-builder.Services.AddScoped<AccessorFactory>();
-builder.Services.AddScoped<IDelayManager, DelayManager>();
-builder.Services.AddScoped<IUserAccessor, UserAccessor>();
-builder.Services.AddScoped<IProjectAccessAccessor, ProjectAccessAccessor>();
-builder.Services.AddScoped<IDelayAccessor, DelayAccessor>();
-builder.Services.AddScoped<IActivityAccessor, ActivityAccessor>();
-builder.Services.AddScoped<INotificationAccessor, NotificationAccessor>();
-builder.Services.AddScoped<IWorkItemAccessor, WorkItemAccessor>();
-builder.Services.AddScoped<IUserManager, UserManager>();
-builder.Services.AddScoped<IHomeManager, HomeManager>();
-builder.Services.AddScoped<INotificationManager, NotificationManager>();
-builder.Services.AddScoped<IUpcomingManager, UpcomingManager>();
+ManagerFactory.RegisterServices(builder.Services);
 
 // Development only: lets the Vite dev server call the API from the browser.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

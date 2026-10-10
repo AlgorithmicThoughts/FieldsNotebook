@@ -10,8 +10,8 @@ namespace Accessors.WorkItems
             int projectId, DateTimeOffset plannedBeforeUtc, CancellationToken cancellationToken)
         {
             var workItems = await (
-                from w in context.WorkItems
-                join segment in context.Segments on w.SegmentId equals segment.Id
+                from w in context.WorkItems.AsNoTracking()
+                join segment in context.Segments.AsNoTracking() on w.SegmentId equals segment.Id
                 where w.ProjectId == projectId && !w.IsCompleted && w.PlannedStartAt < plannedBeforeUtc
                 orderby w.PlannedStartAt, w.Id
                 select new PlannedWorkItemRecord(w.Id, w.Title, segment.Name, w.PlannedStartAt, w.ExpectedFinishAt))
@@ -23,8 +23,8 @@ namespace Accessors.WorkItems
 
             var workItemIds = workItems.Select(w => w.WorkItemId).ToList();
             var predecessors = await (
-                from d in context.WorkItemDependencies
-                join p in context.WorkItems on d.PredecessorWorkItemId equals p.Id
+                from d in context.WorkItemDependencies.AsNoTracking()
+                join p in context.WorkItems.AsNoTracking() on d.PredecessorWorkItemId equals p.Id
                 where d.ProjectId == projectId && workItemIds.Contains(d.SuccessorWorkItemId)
                 orderby d.SuccessorWorkItemId, p.Id
                 select new WorkItemPredecessorRecord(d.SuccessorWorkItemId, p.Id, p.Title, p.ExpectedFinishAt))
