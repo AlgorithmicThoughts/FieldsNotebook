@@ -1,11 +1,13 @@
 using System.Text.Json.Serialization;
 using Accessors.Activity;
 using Accessors.Delays;
+using Accessors.Notifications;
 using Accessors.Projects;
 using Accessors.Users;
 using Database;
 using FieldsNotebook.Controllers;
 using Managers.Home;
+using Managers.Notifications;
 using Managers.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,8 +24,10 @@ builder.Services.AddScoped<IUserAccessor, UserAccessor>();
 builder.Services.AddScoped<IProjectAccessAccessor, ProjectAccessAccessor>();
 builder.Services.AddScoped<IDelayAccessor, DelayAccessor>();
 builder.Services.AddScoped<IActivityAccessor, ActivityAccessor>();
+builder.Services.AddScoped<INotificationAccessor, NotificationAccessor>();
 builder.Services.AddScoped<IUserManager, UserManager>();
 builder.Services.AddScoped<IHomeManager, HomeManager>();
+builder.Services.AddScoped<INotificationManager, NotificationManager>();
 
 // Development only: lets the Vite dev server call the API from the browser.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

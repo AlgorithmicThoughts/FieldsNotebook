@@ -1,6 +1,8 @@
 import { projectHomePath, type ProjectHome } from './api/home'
 import type { CurrentUser, CurrentUserProject } from './api/currentUser'
+import { unreadNotificationCountPath, type UnreadNotificationCount } from './api/notifications'
 import { AppShell } from './components/layout/AppShell'
+import { buildNavItems } from './components/layout/navItems'
 import { Sidebar } from './components/layout/Sidebar'
 import { TopBar } from './components/layout/TopBar'
 import { formatLocalTimeZoneLabel, formatTimeLabel, formatTodayLabel } from './domain/time'
@@ -9,7 +11,6 @@ import { useApiData } from './hooks/useApiData'
 import type { ResolvedTheme } from './hooks/useResolvedTheme'
 import { HomePage } from './pages/home/HomePage'
 import { toActivityBadgeLabel, toActivityEntries, toAdvanceNotice, toHomeMetrics } from './pages/home/homeContent'
-import { HAS_UNREAD_NOTIFICATIONS, NAV_ITEMS } from './pages/home/homeData'
 
 interface ProjectWorkspaceProps {
   user: CurrentUser
@@ -22,7 +23,11 @@ interface ProjectWorkspaceProps {
 
 /** The desktop frame and Home page for one selected project. */
 export function ProjectWorkspace({ user, project, loadedAt, theme, onThemeToggle }: ProjectWorkspaceProps) {
+  // Requested together: the badge belongs to the shell on every screen, Home owns the rest.
   const home = useApiData<ProjectHome>(projectHomePath(project.projectId))
+  const unread = useApiData<UnreadNotificationCount>(unreadNotificationCountPath(project.projectId))
+  // A failed or pending count shows no badge rather than a guess.
+  const unreadCount = unread.data?.unreadCount ?? 0
   const crewLabel = toCrewLabel(project)
 
   return (
@@ -37,13 +42,13 @@ export function ProjectWorkspace({ user, project, loadedAt, theme, onThemeToggle
           userRoleName={project.roleName}
           userCrewName={crewLabel}
           theme={theme}
-          hasUnreadNotifications={HAS_UNREAD_NOTIFICATIONS}
+          hasUnreadNotifications={unreadCount > 0}
           onThemeToggle={onThemeToggle}
         />
       }
       sidebar={
         <Sidebar
-          items={NAV_ITEMS}
+          items={buildNavItems(unreadCount)}
           activeItemId="home"
           crewName={crewLabel}
           roleName={project.roleName}

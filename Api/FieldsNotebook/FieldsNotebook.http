@@ -21,3 +21,9 @@ Accept: application/json
 X-Demo-User-Id: 3
 
 ###
+
+GET {{FieldsNotebook_HostAddress}}/api/projects/1/notifications/unread-count
+Accept: application/json
+X-Demo-User-Id: 3
+
+###
