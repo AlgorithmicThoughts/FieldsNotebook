@@ -13,10 +13,7 @@ export interface DelayReportRequest {
   dateTo?: string
 }
 
-/**
- * One delay, flattened with every identifier resolved to a name so an exported
- * file reads without the database behind it.
- */
+/** One delay, flattened with every identifier resolved to a name. */
 export interface DelayReportRow {
   /** Delays.Number, such as FN-1042. */
   delayNumber: string
@@ -42,23 +39,4 @@ export interface DelayReportRow {
   /** More than one cycle means the delay was reopened. */
   cycleCount: number
   photoCount: number
-}
-
-/** Stands in for an open bound so the file name still reads as a range. */
-const OPEN_BOUND = { from: 'earliest', to: 'latest' }
-
-/**
- * Names the export after its scope: the project codes and the requested range.
- * Timestamps inside the file stay ISO 8601 UTC.
- */
-export function buildReportFileName(
-  projectCodes: string[],
-  dateFrom?: string,
-  dateTo?: string,
-): string {
-  const scope = projectCodes.join('-')
-  const from = dateFrom ?? OPEN_BOUND.from
-  const to = dateTo ?? OPEN_BOUND.to
-
-  return `field-notebook-delays_${scope}_${from}_to_${to}.json`
 }

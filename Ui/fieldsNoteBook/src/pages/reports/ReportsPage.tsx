@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download } from 'lucide-react'
 import { isAbortError, isApiError } from '@/api/errors'
 import { getDelayReport } from '@/api/reports'
-import { Button } from '@/components/common/Button'
-import { buildReportFileName, type DelayReportRequest } from '@/domain/reports'
+import type { DelayReportRequest } from '@/domain/reports'
 import { useWorkspace } from '@/routes/useWorkspace'
 import { ReportPreview } from './components/ReportPreview'
 import { ReportScopeCard } from './components/ReportScopeCard'
-import { downloadReportJson } from './exportReport'
 import { toPreviewView, type ReportState } from './reportsView'
 import { useDebouncedValue } from './useDebouncedValue'
 import { useDelayTags } from './useDelayTags'
@@ -76,7 +73,6 @@ export function ReportsPage() {
   }, [hasScope, request, requestKey])
 
   const view = toPreviewView(hasScope, state, requestKey, tags)
-  const rows = view.kind === 'ready' ? view.rows : []
 
   /** Retries whichever request failed; a loaded tag list is kept. */
   function retry() {
@@ -87,14 +83,6 @@ export function ReportsPage() {
     }
   }
 
-  function exportJson() {
-    const codes = user.projects
-      .filter((project) => selectedProjectIds.includes(project.id))
-      .map((project) => project.code)
-
-    downloadReportJson(rows, buildReportFileName(codes, request.dateFrom, request.dateTo))
-  }
-
   return (
     <>
       <div className="page-title">
@@ -103,13 +91,6 @@ export function ReportsPage() {
           <h1>Delay reports</h1>
           <p>Turn field records into better plans for the next project.</p>
         </div>
-        <Button
-          label="Export JSON"
-          variant="primary"
-          icon={Download}
-          disabled={rows.length === 0}
-          onClick={exportJson}
-        />
       </div>
 
       <div className="report-grid">
