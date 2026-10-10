@@ -36,6 +36,9 @@ const MARKER_LABEL_SHAPE = 'absolute top-[15px] text-[8px] leading-none font-[85
 
 const SURFACE_SHAPE = 'relative w-full overflow-hidden bg-[var(--bg)]'
 
+/** Prototype placeholder until site images come from Azure blob storage. */
+const SITE_IMAGE_URL = '/sitemap.png'
+
 /** One delay that carries a pin on the project's site image. */
 export interface SiteMapPin {
   /** Delays.Number, such as FN-1042. */
@@ -120,7 +123,6 @@ function PinMarker({ item, isSelected, onSelect }: PinMarkerProps) {
 }
 
 interface SiteMapProps {
-  imageUrl: string
   imageName: string
   /** Delays carrying a pin. */
   pins: SiteMapPin[]
@@ -143,7 +145,6 @@ interface SiteMapProps {
  * the image has no calibration, so only a point a user chose is real.
  */
 export function SiteMap({
-  imageUrl,
   imageName,
   pins,
   selectedDelayNumber,
@@ -193,7 +194,7 @@ export function SiteMap({
     <>
       <img
         ref={imageRef}
-        src={imageUrl}
+        src={SITE_IMAGE_URL}
         alt={imageName}
         draggable={false}
         onError={() => setIsUnavailable(true)}

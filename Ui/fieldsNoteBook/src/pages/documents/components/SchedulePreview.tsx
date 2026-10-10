@@ -8,14 +8,23 @@ interface ScheduleRow {
   statusCode: DelayStatusCode
 }
 
-/** Sample rows. A schedule is not a contract and no table stores these. */
+/**
+ * Sample rows. A schedule is not a contract and no table stores these, so the
+ * crews and the work read the same as the project's own records rather than
+ * naming crews that exist nowhere else.
+ */
 const ROWS: ScheduleRow[] = [
-  { time: '07:00 AM', crew: 'Crew B', activity: 'Frame 12 weld', statusCode: 'Raised' },
+  {
+    time: '07:00 AM',
+    crew: 'Welding and Erection',
+    activity: 'Bay 1 frame weld',
+    statusCode: 'Acknowledged',
+  },
   {
     time: '02:00 PM',
-    crew: 'Crew A',
-    activity: 'Tentative fit-up handover',
-    statusCode: 'Acknowledged',
+    crew: 'Steel Fit-up',
+    activity: 'Tentative Bay 1 fit-up handover',
+    statusCode: 'ReadyForHandover',
   },
 ]
 
@@ -23,7 +32,7 @@ const ROWS: ScheduleRow[] = [
 export function SchedulePreview() {
   return (
     <>
-      <h3>Thursday, 8 October</h3>
+      <h3>Sunday, 11 October</h3>
 
       <div className="mt-3">
         {ROWS.map((row) => {

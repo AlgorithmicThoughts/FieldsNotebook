@@ -35,6 +35,10 @@
   color: var(--on-accent);
 }
 
+.project-menu {
+  position: relative;
+}
+
 .project-button {
   display: flex;
   align-items: center;
@@ -61,6 +65,57 @@
   display: block;
   font-size: 11px;
   color: var(--muted);
+}
+
+.project-button:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+.project-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 10;
+  min-width: 100%;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: 0 14px 34px var(--shadow);
+}
+
+.project-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.project-option:hover {
+  background: var(--bg);
+}
+
+.project-option strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.project-option small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.project-option[aria-checked='true'] {
+  color: var(--accent);
 }
 
 .notifications-unread::after {

@@ -31,7 +31,7 @@ export function SiteLayoutPreview({ projectId }: SiteLayoutPreviewProps) {
 
   return (
     <>
-      <SiteMap imageUrl={state.siteMap.uri} imageName={state.siteMap.name} pins={[]} compact />
+      <SiteMap imageName={state.siteMap.name} pins={[]} compact />
 
       <p className="small muted mt-4">
         Sample layout of {state.siteMap.name}. The image has no GPS calibration, so it shows no

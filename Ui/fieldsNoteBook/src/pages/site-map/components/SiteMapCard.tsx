@@ -48,7 +48,6 @@ export function SiteMapCard({
         }
       />
       <SiteMap
-        imageUrl={siteMap.uri}
         imageName={siteMap.name}
         pins={pins}
         selectedDelayNumber={selectedDelayNumber ?? undefined}

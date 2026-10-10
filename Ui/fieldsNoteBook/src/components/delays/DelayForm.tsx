@@ -238,7 +238,6 @@ export function DelayForm({
           </p>
         ) : (
           <SiteMap
-            imageUrl={options.siteMap.uri}
             imageName={options.siteMap.name}
             pins={[]}
             editable

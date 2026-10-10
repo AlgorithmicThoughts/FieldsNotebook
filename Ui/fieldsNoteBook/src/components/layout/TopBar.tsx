@@ -1,16 +1,21 @@
-import { Bell, Building2, ChevronDown, Moon, Sun } from 'lucide-react'
+import { Bell, Moon, Sun } from 'lucide-react'
 import { IconButton } from '@/components/common/Button'
-import { Icon } from '@/components/common/Icon'
 import type { ResolvedTheme } from '@/hooks/useResolvedTheme'
+import type { UserProject } from '@/domain/users'
 import { Brand } from './Brand'
 import { ProfileMenu } from './ProfileMenu'
+import { ProjectMenu } from './ProjectMenu'
 import './layout.css'
 
 interface TopBarProps {
   projectName: string
-  /** Projects.Code, such as OF-017. */
+  /** Projects.Code, such as OMA-FAB. */
   projectCode: string
   projectPlace: string
+  /** Every project the user is assigned to, so the menu never reaches past them. */
+  projects: UserProject[]
+  activeProjectId: number
+  isSwitchingProject: boolean
   userDisplayName: string
   userInitials: string
   userRoleName: string
@@ -18,7 +23,7 @@ interface TopBarProps {
   theme: ResolvedTheme
   hasUnreadNotifications: boolean
   onThemeToggle?: () => void
-  onProjectChange?: () => void
+  onProjectChange?: (projectId: number) => void
   onNotificationsOpen?: () => void
   onSignOut: () => void
 }
@@ -27,6 +32,9 @@ export function TopBar({
   projectName,
   projectCode,
   projectPlace,
+  projects,
+  activeProjectId,
+  isSwitchingProject,
   userDisplayName,
   userInitials,
   userRoleName,
@@ -42,21 +50,15 @@ export function TopBar({
     <header className="topbar">
       <Brand />
 
-      <button
-        type="button"
-        className="project-button"
-        onClick={onProjectChange}
-        aria-label={`Change project, ${projectName}`}
-      >
-        <Icon icon={Building2} className="project-icon" />
-        <span className="grow">
-          <strong>{projectName}</strong>
-          <small>
-            {projectCode} · {projectPlace}
-          </small>
-        </span>
-        <Icon icon={ChevronDown} />
-      </button>
+      <ProjectMenu
+        projects={projects}
+        activeProjectId={activeProjectId}
+        activeProjectName={projectName}
+        activeProjectCode={projectCode}
+        activeProjectPlace={projectPlace}
+        isSwitching={isSwitchingProject}
+        onSelectProject={onProjectChange}
+      />
 
       <div className="spacer" />
 

@@ -9,3 +9,12 @@
 .workspace-message p {
   color: var(--muted);
 }
+
+.project-switch-error {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: var(--radius-control);
+  background: var(--urgent-bg);
+  font-size: 13px;
+  color: var(--urgent);
+}

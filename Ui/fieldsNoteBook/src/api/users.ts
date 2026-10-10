@@ -82,11 +82,15 @@ function settingsOf(userId: number): UserSettingsValues {
 }
 
 /**
- * The mock treats the user's first project as the active one. The real API
- * returns the active project, so only this line changes with it.
+ * The mock has no session, so the chosen project lives here until the page
+ * reloads. The real API keeps it with the session and this map goes away.
  */
-function activeProjectOf(projects: UserProject[]): UserProject {
-  const project = projects[0]
+const ACTIVE_PROJECT_BY_USER = new Map<number, number>()
+
+/** The chosen project when the user has picked one, and their first otherwise. */
+function activeProjectOf(userId: number, projects: UserProject[]): UserProject {
+  const chosenId = ACTIVE_PROJECT_BY_USER.get(userId)
+  const project = projects.find((candidate) => candidate.id === chosenId) ?? projects[0]
 
   if (project === undefined) {
     throw new ApiError(404, 'You are not assigned to a project in Field Notebook.')
@@ -97,7 +101,7 @@ function activeProjectOf(projects: UserProject[]): UserProject {
 
 function toCurrentUser(row: UserRow): CurrentUser {
   const projects = projectsOf(row.Id)
-  const activeProject = activeProjectOf(projects)
+  const activeProject = activeProjectOf(row.Id, projects)
   const crew = crewOf(row.Id, activeProject.id)
   const settings = settingsOf(row.Id)
 
@@ -201,6 +205,28 @@ export async function getUser(_userId: number, options?: RequestOptions): Promis
 
     throw error
   }
+}
+
+/**
+ * Moves the user to another of their assigned projects and returns the user as
+ * they stand on it, since the role and the crew both change with the project.
+ */
+export async function setActiveProject(
+  userId: number,
+  projectId: number,
+  options?: RequestOptions,
+): Promise<CurrentUser> {
+  return mockRequest(options, () => {
+    const row = userRowOf(userId)
+
+    if (!projectsOf(userId).some((project) => project.id === projectId)) {
+      throw new ApiError(403, 'You are not assigned to that project in Field Notebook.')
+    }
+
+    ACTIVE_PROJECT_BY_USER.set(userId, projectId)
+
+    return toCurrentUser(row)
+  })
 }
 
 /** The four UserSettings columns a user can change. There is no fifth preference. */
