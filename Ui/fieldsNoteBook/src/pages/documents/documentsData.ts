@@ -13,6 +13,8 @@ export interface SiteDocument {
   /** Shown as an outline Badge. */
   version: string
   icon: LucideIcon
+  /** A sample file View opens in a new tab instead of the preview modal. */
+  fileUrl?: string
 }
 
 // Sample documents. No table backs this content. The approved design presents
@@ -25,6 +27,8 @@ export const SITE_DOCUMENTS: SiteDocument[] = [
     note: 'Project safety reference',
     version: 'Sample · Rev 03',
     icon: ShieldCheck,
+    // A placeholder PDF that says Hello World. It holds no safety instructions.
+    fileUrl: `${import.meta.env.BASE_URL}sample-safety-plan.pdf`,
   },
   {
     id: 'schedule',
