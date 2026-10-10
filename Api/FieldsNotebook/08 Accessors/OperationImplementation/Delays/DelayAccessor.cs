@@ -2,10 +2,13 @@ using Common.Delays;
 using Common.Reports;
 using Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Utilities;
 
 namespace Accessors.Delays
 {
-    public class DelayAccessor(FieldNotebookContext context) : IDelayAccessor
+    public partial class DelayAccessor(FieldNotebookContext context, UtilityFactory Utilities,
+        ILogger<DelayAccessor> logger) : IDelayAccessor
     {
         public async Task<ActiveDelaySet> GetActiveDelaysForCrewsAsync(
             int projectId, IReadOnlyCollection<int> crewIds, CancellationToken cancellationToken)
@@ -89,7 +92,7 @@ namespace Accessors.Delays
                 join segment in context.Segments.AsNoTracking() on d.SegmentId equals segment.Id
                 join reporter in context.Users.AsNoTracking() on d.ReportedByUserId equals reporter.Id
                 orderby d.CreatedAt descending, d.Id descending
-                select new DelayReportRecord(
+                select new Common.Reports.DelayReportRecord(
                     d.Id,
                     d.Number,
                     p.Name,

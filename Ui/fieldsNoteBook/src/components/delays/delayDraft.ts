@@ -6,6 +6,7 @@ export const MIN_PHOTOS = 1
 export const MAX_PHOTOS = 5
 export const DESCRIPTION_MAX_LENGTH = 2000
 export const LOCATION_NAME_MAX_LENGTH = 160
+export const TITLE_MAX_LENGTH = 200
 
 /** One affected crew and the work item it cannot start. */
 export interface AffectedCrewDraft {
@@ -23,6 +24,7 @@ export interface PhotoDraft {
 }
 
 export interface DelayDraft {
+  title: string
   description: string
   ownerCrewId: number | null
   affectedCrews: AffectedCrewDraft[]
@@ -30,8 +32,6 @@ export interface DelayDraft {
   delayTagId: number | null
   /** Reported before the affected crew arrives, so ReportType is AdvanceNotice. */
   isAdvanceNotice: boolean
-  /** A `datetime-local` value in project time, converted to UTC on submit. */
-  expectedReadyAt: string
   photos: PhotoDraft[]
   segmentId: number | null
   pin: DelayPin | null
@@ -39,29 +39,33 @@ export interface DelayDraft {
   notifyUserIds: number[]
 }
 
-export const EMPTY_DELAY_DRAFT: DelayDraft = {
-  description: '',
-  ownerCrewId: null,
-  affectedCrews: [],
-  blockingWorkItemId: null,
-  delayTagId: null,
-  isAdvanceNotice: false,
-  expectedReadyAt: '',
-  photos: [],
-  segmentId: null,
-  pin: null,
-  locationName: '',
-  notifyUserIds: [],
+/** Each report owns fresh values, with only the reporter's crew preselected. */
+export function createDelayDraft(user: CurrentUser): DelayDraft {
+  return {
+    title: '',
+    description: '',
+    ownerCrewId: null,
+    affectedCrews: user.crews.map((crew) => ({ crewId: crew.id, workItemId: null })),
+    blockingWorkItemId: null,
+    delayTagId: null,
+    isAdvanceNotice: false,
+    photos: [],
+    segmentId: null,
+    pin: null,
+    locationName: '',
+    notifyUserIds: [],
+  }
 }
 
 export type DelayDraftField =
+  | 'title'
   | 'description'
   | 'ownerCrew'
   | 'affectedCrews'
   | 'reason'
-  | 'expectedReadyAt'
   | 'photos'
   | 'location'
+  | 'segment'
 
 export type DelayDraftErrors = Partial<Record<DelayDraftField, string>>
 
@@ -82,6 +86,16 @@ interface DraftRule {
 
 const DRAFT_RULES: DraftRule[] = [
   {
+    field: 'title',
+    message: 'Enter a delay title.',
+    isBroken: (draft) => draft.title.trim().length === 0,
+  },
+  {
+    field: 'segment',
+    message: 'Choose the segment where the delay occurs.',
+    isBroken: (draft) => draft.segmentId === null,
+  },
+  {
     field: 'description',
     message: 'Describe what stops the work.',
     isBroken: (draft) => draft.description.trim().length === 0,
@@ -100,11 +114,6 @@ const DRAFT_RULES: DraftRule[] = [
     field: 'reason',
     message: 'Choose one reason.',
     isBroken: (draft) => draft.delayTagId === null,
-  },
-  {
-    field: 'expectedReadyAt',
-    message: 'Enter the tentative completion date and time.',
-    isBroken: (draft) => draft.isAdvanceNotice && draft.expectedReadyAt === '',
   },
   {
     field: 'photos',
@@ -153,17 +162,6 @@ export function reporterError(draft: DelayDraft, user: CurrentUser): string | nu
   return null
 }
 
-/** A `datetime-local` value is project-local wall time. The contract is UTC. */
-function toUtcIso(value: string, isAdvanceNotice: boolean): string | null {
-  if (!isAdvanceNotice || value === '') {
-    return null
-  }
-
-  const parsed = new Date(value)
-
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
-}
-
 function locationSourceOf(draft: DelayDraft): DelayLocationSource | null {
   if (draft.pin !== null) {
     return 'ManualPin'
@@ -187,6 +185,7 @@ export function toCreateDelayRequest(
 
   return {
     projectId,
+    title: draft.title.trim(),
     description: draft.description.trim(),
     ownerCrewId: draft.ownerCrewId,
     impacts: draft.affectedCrews.map((crew) => ({
@@ -196,7 +195,6 @@ export function toCreateDelayRequest(
     blockingWorkItemId: draft.blockingWorkItemId,
     delayTagId: draft.delayTagId,
     reportType: draft.isAdvanceNotice ? 'AdvanceNotice' : 'AfterArrival',
-    expectedReadyAt: toUtcIso(draft.expectedReadyAt, draft.isAdvanceNotice),
     photos: draft.photos.map((photo) => ({
       file: photo.file,
       latitude: photo.latitude,

@@ -6,10 +6,12 @@ using Common.Errors;
 using DataContract.Delays;
 using DataContract.Home;
 using Engines.Delays;
+using Utilities.OperationContract;
+using Utilities;
 
 namespace Managers.Delays;
 
-public class DelayManager(AccessorFactory accessorFactory) : IDelayManager
+public class DelayManager(AccessorFactory accessorFactory, UtilityFactory? Utilities = null) : IDelayManager
 {
     public async Task<TrackingResponse> GetProjectTrackingDetailsAsync(int userId, int projectId, CancellationToken cancellationToken)
     {
@@ -19,13 +21,15 @@ public class DelayManager(AccessorFactory accessorFactory) : IDelayManager
             .GetProjectAccessAsync(userId, projectId, cancellationToken)
             ?? throw new ProjectAccessDeniedException(projectId);
         var data = await accessorFactory.CreateAccessor<IDelayAccessor>().GetProjectTrackingDetailsAsync(projectId, cancellationToken);
-        var mapping = new TrackingMapping(data, projectId, access.ProjectName);
+        var mapping = new TrackingMapping(data, projectId, access.ProjectName,
+            Utilities?.CreateManager<IAzureBlobStorageUtility>());
         return new TrackingResponse(projectId, access.ProjectName, data.Delays.Select(mapping.ToDelay).ToList());
     }
 
     private sealed class TrackingMapping
     {
         private readonly int _projectId;
+        private readonly IAzureBlobStorageUtility? _storage;
         private readonly string _projectName;
         private readonly ILookup<int, TrackingImpactRecord> _impacts;
         private readonly ILookup<int, TrackingCycleRecord> _cycles;
@@ -34,9 +38,10 @@ public class DelayManager(AccessorFactory accessorFactory) : IDelayManager
         private readonly ILookup<(int, int), TrackingVerificationRecord> _verifications;
         private readonly IReadOnlyDictionary<int, TrackingSiteMapRecord> _maps;
 
-        public TrackingMapping(TrackingSet data, int projectId, string projectName)
+        public TrackingMapping(TrackingSet data, int projectId, string projectName, IAzureBlobStorageUtility? storage)
         {
             _projectId = projectId;
+            _storage = storage;
             _projectName = projectName;
             _impacts = data.Impacts.ToLookup(i => i.DelayId);
             _cycles = data.Cycles.ToLookup(c => c.DelayId);
@@ -76,7 +81,9 @@ public class DelayManager(AccessorFactory accessorFactory) : IDelayManager
 
         private IReadOnlyList<DelayPhotoGroupResponse> ToPhotos(int delayId) =>
             _photos[delayId].GroupBy(p => p.Purpose).Select(g => new DelayPhotoGroupResponse(g.Key,
-                g.Select(p => new DelayPhotoResponse(p.Id, p.OriginalUrl, p.ThumbnailUrl, p.FileName, p.CreatedAt, p.Latitude, p.Longitude)).ToList())).ToList();
+                g.Select(p => new DelayPhotoResponse(p.Id, ReadUrl(p.OriginalUrl), ReadUrl(p.ThumbnailUrl), p.FileName, p.CreatedAt, p.Latitude, p.Longitude)).ToList())).ToList();
+
+        private string ReadUrl(string url) => _storage?.GetReadUrl(url) ?? url;
 
         private TrackingSiteMapResponse? ToSiteMap(int? id) =>
             id is { } value && _maps.TryGetValue(value, out var map) ? new(map.Id, map.Name, map.Uri) : null;

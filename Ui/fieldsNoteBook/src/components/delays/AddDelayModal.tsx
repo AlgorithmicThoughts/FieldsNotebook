@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Send } from 'lucide-react'
-import { createDelay, getDelayFormOptions } from '@/api/delays'
+import { createDelay, getDelayFormOptions } from '@/api/delayReports'
 import { isAbortError, isApiError } from '@/api/errors'
 import type { CreateDelayRequest, DelayFormOptions, DelaySummary } from '@/domain/delays'
 import type { CurrentUser } from '@/domain/users'
@@ -8,7 +8,7 @@ import { Button } from '@/components/common/Button'
 import { Modal } from '@/components/common/Modal'
 import { DelayForm } from './DelayForm'
 import {
-  EMPTY_DELAY_DRAFT,
+  createDelayDraft,
   reporterError,
   toCreateDelayRequest,
   validateDraft,
@@ -43,7 +43,11 @@ interface AddDelayModalProps {
  * The delay report form. Every value stays local to this modal, and a failed
  * save keeps all of it, including the chosen photos.
  */
-export function AddDelayModal({
+export function AddDelayModal(props: AddDelayModalProps) {
+  return props.open ? <OpenDelayModal key={`${props.projectId}:${props.user.id}`} {...props} /> : null
+}
+
+function OpenDelayModal({
   open,
   onOpenChange,
   user,
@@ -52,10 +56,13 @@ export function AddDelayModal({
 }: AddDelayModalProps) {
   const [options, setOptions] = useState<DelayFormOptions | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [draft, setDraft] = useState<DelayDraft>(EMPTY_DELAY_DRAFT)
+  const [draft, setDraft] = useState<DelayDraft>(() => createDelayDraft(user))
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isReadingPhotos, setIsReadingPhotos] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const savingRef = useRef(false)
+  const alive = useRef(false)
 
   useEffect(() => {
     if (!open) {
@@ -66,6 +73,7 @@ export function AddDelayModal({
 
     getDelayFormOptions(projectId, { signal: controller.signal })
       .then((next) => {
+        if (controller.signal.aborted) return
         setOptions(next)
         setLoadError(null)
       })
@@ -87,51 +95,70 @@ export function AddDelayModal({
 
   useEffect(() => {
     // Five full-resolution phone photos are real memory.
-    return () => revokePreviews(photosRef.current)
+    alive.current = true
+    return () => {
+      alive.current = false
+      revokePreviews(photosRef.current)
+    }
   }, [])
 
   const draftErrors = validateDraft(draft)
   const permissionError = reporterError(draft, user)
+  const isValid = permissionError === null && Object.keys(draftErrors).length === 0
   const topError = saveError ?? loadError ?? (hasSubmitted ? permissionError : null)
 
   function changeDraft(patch: Partial<DelayDraft>) {
     setDraft((current) => ({ ...current, ...patch }))
   }
 
-  async function save(request: CreateDelayRequest) {
+  function discardReport() {
+    revokePreviews(draft.photos)
+    photosRef.current = []
+    setDraft(createDelayDraft(user))
+    setHasSubmitted(false)
+    setSaveError(null)
+    setIsReadingPhotos(false)
+  }
+
+  function reportCreated(created: DelaySummary) {
+    if (!alive.current) return
+    discardReport()
+    onCreated(created)
+    onOpenChange(false)
+  }
+
+  function reportFailed(error: unknown) {
+    if (alive.current && !isAbortError(error)) setSaveError(messageOf(error))
+  }
+
+  function finishSaving() {
+    savingRef.current = false
+    if (alive.current) setIsSaving(false)
+  }
+
+  function save(request: CreateDelayRequest) {
+    if (savingRef.current) return
+    savingRef.current = true
     setIsSaving(true)
     setSaveError(null)
 
-    try {
-      const created = await createDelay(request)
+    void createDelay(request).then(reportCreated).catch(reportFailed).finally(finishSaving)
+  }
 
-      revokePreviews(draft.photos)
-      setDraft(EMPTY_DELAY_DRAFT)
-      setHasSubmitted(false)
-      onCreated(created)
-      onOpenChange(false)
-    } catch (error) {
-      // Cancellation is not a failure, and a failure keeps every entered value.
-      if (!isAbortError(error)) {
-        setSaveError(messageOf(error))
-      }
-    } finally {
-      setIsSaving(false)
-    }
+  function changeOpen(next: boolean) {
+    if (savingRef.current) return
+    if (!next) discardReport()
+    onOpenChange(next)
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (isReadingPhotos || options === null) return
     setHasSubmitted(true)
 
-    const request =
-      options === null
-        ? null
-        : toCreateDelayRequest(draft, options.projectId, options.siteMap?.id ?? null)
-
-    if (request === null || permissionError !== null || Object.keys(draftErrors).length > 0) {
-      return
-    }
+    if (!isValid) return
+    const request = toCreateDelayRequest(draft, options.projectId, options.siteMap?.id ?? null)
+    if (request === null) return
 
     void save(request)
   }
@@ -140,10 +167,10 @@ export function AddDelayModal({
     <Modal
       open={open}
       title="Report a delay"
-      onOpenChange={onOpenChange}
+      onOpenChange={changeOpen}
       actions={
         <>
-          <Button label="Cancel" disabled={isSaving} onClick={() => onOpenChange(false)} />
+          <Button label="Cancel" disabled={isSaving} onClick={() => changeOpen(false)} />
           <Button
             label={isSaving ? 'Sending…' : 'Send report'}
             variant="primary"
@@ -152,7 +179,7 @@ export function AddDelayModal({
             type="submit"
             form={FORM_ID}
             // A second click must not create a second delay.
-            disabled={isSaving || options === null}
+            disabled={isSaving || isReadingPhotos || options === null}
           />
         </>
       }
@@ -178,6 +205,8 @@ export function AddDelayModal({
           errors={hasSubmitted ? draftErrors : {}}
           disabled={isSaving}
           signedInUserId={user.id}
+          reporterCrewIds={user.crews.map((crew) => crew.id)}
+          onPhotoReadingChange={setIsReadingPhotos}
           onDraftChange={changeDraft}
           onSubmit={handleSubmit}
         />

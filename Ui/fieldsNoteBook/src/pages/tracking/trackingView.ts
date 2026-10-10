@@ -179,7 +179,7 @@ const ACTION_RULES: ActionRule[] = [
     id: 'completionTime',
     label: 'Revise completion time',
     icon: CalendarDays,
-    isOffered: (delay, user) => canSetCompletionTime(user, delay) && isDelayActive(delay),
+    isOffered: (delay, user) => canSetCompletionTime(user, delay),
   },
   {
     id: 'requestCheck',
@@ -317,7 +317,7 @@ export function toNextStepNote(delay: DelayDetail, user: CurrentUser): string {
     (delay.statusCode === 'Raised' || delay.statusCode === 'Reopened') &&
     canAcknowledge(user, delay)
   ) {
-    return 'Speak to your Foreman, then acknowledge this delay.'
+    return 'Speak to your Foreman, then acknowledge this delay and give a tentative completion time if work remains.'
   }
 
   if (delay.statusCode === 'Acknowledged' && canRequestHandoverCheck(user, delay)) {

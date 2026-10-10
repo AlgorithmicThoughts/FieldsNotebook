@@ -74,11 +74,12 @@ const DEMO_USER_HEADER = 'X-Demo-User-Id'
 
 const UNREACHABLE = 'The request did not reach Field Notebook. Try again.'
 
-function requestHeaders(hasBody: boolean): Record<string, string> {
+function requestHeaders(body: unknown): Record<string, string> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   const session = readAuthSession()
 
-  if (hasBody) {
+  // The browser supplies the multipart boundary for photo uploads.
+  if (body !== undefined && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json'
   }
 
@@ -99,6 +100,11 @@ async function problemTitle(response: Response): Promise<string> {
   }
 }
 
+function encodeBody(body: unknown): BodyInit | undefined {
+  if (body === undefined || body instanceof FormData) return body
+  return JSON.stringify(body)
+}
+
 /**
  * One request against the Field Notebook API. Cancellation surfaces as the
  * same AbortError the mock raises; any other failure becomes an ApiError whose
@@ -115,8 +121,8 @@ async function apiRequest<T>(
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
-      headers: requestHeaders(body !== undefined),
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: requestHeaders(body),
+      body: encodeBody(body),
       signal: options?.signal,
     })
   } catch (error) {
@@ -141,6 +147,10 @@ export function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
 /** A POST with no body; the route names the action. */
 export function apiPost<T>(path: string, options?: RequestOptions): Promise<T> {
   return apiRequest<T>('POST', path, options)
+}
+
+export function apiPostForm<T>(path: string, body: FormData, options?: RequestOptions): Promise<T> {
+  return apiRequest<T>('POST', path, options, body)
 }
 
 /** A PATCH whose JSON body carries only the fields being changed. */

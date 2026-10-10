@@ -5,6 +5,7 @@ using Accessors.Projects;
 using Accessors.Users;
 using Accessors.WorkItems;
 using Microsoft.Extensions.DependencyInjection;
+using Utilities;
 
 namespace Accessors;
 
@@ -13,6 +14,7 @@ public class AccessorFactory(IServiceProvider services)
 {
     public static void RegisterServices(IServiceCollection services)
     {
+        UtilityFactory.RegisterServices(services);
         services.AddScoped<AccessorFactory>();
         services.AddScoped<IUserAccessor, UserAccessor>();
         services.AddScoped<IProjectAccessAccessor, ProjectAccessAccessor>();
