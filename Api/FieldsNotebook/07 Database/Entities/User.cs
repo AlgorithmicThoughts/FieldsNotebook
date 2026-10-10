@@ -1,6 +1,7 @@
 namespace Database.Entities
 {
-    public class User
+    /// <summary>Maps dbo.Users. Generated from Field-Notebook-Create-And-Seed.sql; add behavior in a separate partial file.</summary>
+    public partial class User
     {
         public int Id { get; set; }
         public string DisplayName { get; set; } = string.Empty;
