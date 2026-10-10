@@ -18,12 +18,14 @@ enum HomeDelayStatus: String {
     case blocked = "Blocked"
     case inProgress = "In progress"
     case verification = "Ready to verify"
+    case resolved = "Resolved"
 
     var symbol: String {
         switch self {
         case .blocked: "pause.circle"
         case .inProgress: "wrench.and.screwdriver"
         case .verification: "doc.text.magnifyingglass"
+        case .resolved: "checkmark.circle.fill"
         }
     }
 }
@@ -38,6 +40,8 @@ struct HomeDelay: Identifiable {
     let location: String
     let status: HomeDelayStatus
     var isHighPriority = false
+
+    var isActive: Bool { status != .resolved }
 
     var crewSummary: String {
         "\(responsibleCrew) → \(affectedCrews.joined(separator: ", "))"

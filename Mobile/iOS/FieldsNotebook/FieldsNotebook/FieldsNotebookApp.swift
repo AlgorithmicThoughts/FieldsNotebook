@@ -11,7 +11,7 @@ import SwiftUI
 struct FieldsNotebookApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppRootView()
         }
     }
 }
