@@ -58,7 +58,7 @@ namespace Tests.Managers
             Assert.Equal(0, home.Metrics.ReadyToVerify);
             Assert.Equal(["FN-006", "FN-003"], home.AttentionDelays.Select(d => d.Number));
             Assert.True(home.AttentionDelays[0].IsHighPriority);
-            Assert.Equal("FN-003", home.AdvanceNotice?.DelayNumber);
+            Assert.Equal("FN-003", home.AdvanceNotice?.Number);
             Assert.Equal(["Welding and Erection", "Coatings"], home.AdvanceNotice?.BlockedCrewNames);
             Assert.Equal(tomorrow, home.AdvanceNotice?.ExpectedReadyAt);
         }
@@ -76,6 +76,23 @@ namespace Tests.Managers
 
             Assert.Equal(1, home.Metrics.ReadyToVerify);
             Assert.Null(home.AdvanceNotice);
+        }
+
+        [Fact]
+        public async Task GetHomeAsync_ManyActiveDelays_ListsFourButCountsAll()
+        {
+            GrantAccess(RoleNames.Foreman, new CrewLeadRecord(Welding, ProjectId, "Welding and Erection", IsForemanLead: true));
+            var delays = Enumerable.Range(1, 6)
+                .Select(id => Delay(id, $"FN-{id:000}", SteelFitUp, "Steel Fit-up", DelayStatusCodes.Raised, DelayReportTypes.AfterArrival, cycles: 1))
+                .ToList();
+            _delays
+                .Setup(a => a.GetActiveDelaysForCrewsAsync(ProjectId, It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ActiveDelaySet(delays, delays.Select(d => Impact(d.DelayId, Welding, "Welding and Erection")).ToList()));
+
+            var home = await CreateManager().GetHomeAsync(UserId, ProjectId, CancellationToken.None);
+
+            Assert.Equal(HomeManager.AttentionLimit, home.AttentionDelays.Count);
+            Assert.Equal(6, home.Metrics.BlockingOurCrews);
         }
 
         [Fact]
@@ -131,9 +148,10 @@ namespace Tests.Managers
         private static ActiveDelayRecord Delay(
             int id, string number, int ownerCrewId, string ownerCrewName, string statusCode, string reportType, int cycles, DateTimeOffset? eta = null) =>
             new(id, number, $"Delay {number}", "Details", statusCode, "QualityConcern", "Quality concern", ownerCrewId, ownerCrewName,
-                reportType, "Bay 2", DateTimeOffset.UnixEpoch.AddDays(id), cycles, HasOpenCycle: true, eta);
+                reportType, "Bay 2", "Bay 2 Steel Assembly", SiteMapId: null, PinX: null, PinY: null,
+                DateTimeOffset.UnixEpoch.AddDays(id), cycles, HasOpenCycle: true, eta);
 
         private static ActiveDelayImpactRecord Impact(int delayId, int crewId, string crewName) =>
-            new(delayId, crewId, crewName, IsVerifiedInOpenCycle: false);
+            new(ImpactId: delayId * 100 + crewId, delayId, crewId, crewName, BlockedWorkItemId: null, IsVerifiedInOpenCycle: false);
     }
 }

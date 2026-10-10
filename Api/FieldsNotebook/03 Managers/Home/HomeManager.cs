@@ -18,6 +18,9 @@ namespace Managers.Home
         /// <summary>Home shows only the latest handovers; a full timeline belongs to the delay or activity screens.</summary>
         public const int RecentActivityLimit = 5;
 
+        /// <summary>Rows in "Needs attention"; the metrics still count every active delay, and Tracking lists the rest.</summary>
+        public const int AttentionLimit = 4;
+
         public async Task<HomeResponse> GetHomeAsync(int userId, int projectId, CancellationToken cancellationToken)
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(userId, 1);
@@ -30,22 +33,28 @@ namespace Managers.Home
                 .ToHashSet();
             if (ourCrewIds.Count == 0)
             {
-                return BuildHome(new ActiveDelayView(ActiveDelaySet.Empty, ourCrewIds), access.ProjectName, []);
+                return BuildHome(new ActiveDelayView(ActiveDelaySet.Empty, ourCrewIds), new ProjectRef(projectId, access.ProjectName), []);
             }
 
             // Sequential on purpose: both Accessors share this request's DbContext.
             var active = await delayAccessor.GetActiveDelaysForCrewsAsync(projectId, ourCrewIds, cancellationToken);
             var activity = await activityAccessor.GetRecentActivityForCrewsAsync(projectId, ourCrewIds, RecentActivityLimit, cancellationToken);
 
-            return BuildHome(new ActiveDelayView(active, ourCrewIds), access.ProjectName, activity);
+            return BuildHome(new ActiveDelayView(active, ourCrewIds), new ProjectRef(projectId, access.ProjectName), activity);
         }
 
-        private static HomeResponse BuildHome(ActiveDelayView view, string projectName, IReadOnlyList<ActivityEventRecord> activity) =>
+        private static HomeResponse BuildHome(ActiveDelayView view, ProjectRef project, IReadOnlyList<ActivityEventRecord> activity) =>
             new(
                 BuildMetrics(view),
-                view.Delays.Select(d => ToSummary(d, view, projectName)).OrderByDescending(d => d.IsHighPriority).ToList(),
-                BuildAdvanceNotice(view),
+                view.Delays
+                    .Select(d => ToSummary(d, view, project))
+                    .OrderByDescending(d => d.IsHighPriority)
+                    .Take(AttentionLimit)
+                    .ToList(),
+                BuildAdvanceNotice(view, project),
                 activity.Select(ToActivityEntry).ToList());
+
+        private sealed record ProjectRef(int Id, string Name);
 
         private static HomeMetricsResponse BuildMetrics(ActiveDelayView view)
         {
@@ -63,17 +72,17 @@ namespace Managers.Home
         }
 
         // The earliest tentative completion first; a notice without an estimate still shows, after the others.
-        private static AdvanceNoticeResponse? BuildAdvanceNotice(ActiveDelayView view) =>
+        private static DelaySummaryResponse? BuildAdvanceNotice(ActiveDelayView view, ProjectRef project) =>
             view.Delays
                 .Where(d => DelayRulesEngine.IsAdvanceNotice(d.ReportType) && view.BlocksOurCrews(d))
                 .OrderBy(d => d.ExpectedReadyAt is null)
                 .ThenBy(d => d.ExpectedReadyAt)
-                .Select(d => new AdvanceNoticeResponse(
-                    d.Number, d.Title, d.Description, d.OwnerCrewName, view.BlockedCrewNamesOf(d), d.ExpectedReadyAt))
+                .Select(d => ToSummary(d, view, project))
                 .FirstOrDefault();
 
-        private static DelaySummaryResponse ToSummary(ActiveDelayRecord delay, ActiveDelayView view, string projectName) =>
+        private static DelaySummaryResponse ToSummary(ActiveDelayRecord delay, ActiveDelayView view, ProjectRef project) =>
             new(
+                delay.DelayId,
                 delay.Number,
                 delay.Title,
                 delay.StatusCode,
@@ -81,9 +90,17 @@ namespace Managers.Home
                 delay.TagName,
                 delay.OwnerCrewName,
                 view.BlockedCrewNamesOf(delay),
+                view.ImpactsOf(delay).Select(i => new DelayImpactResponse(i.ImpactId, i.BlockedCrewName, i.BlockedWorkItemId)).ToList(),
                 delay.LocationName,
-                projectName,
-                DelayRulesEngine.IsHighPriority(delay.CycleCount, delay.HasOpenCycle));
+                project.Id,
+                project.Name,
+                DelayRulesEngine.IsHighPriority(delay.CycleCount, delay.HasOpenCycle),
+                delay.ReportType,
+                delay.CreatedAt,
+                delay.ExpectedReadyAt,
+                delay.PinX is { } x && delay.PinY is { } y ? new DelayPinResponse(x, y) : null,
+                delay.SiteMapId,
+                delay.SegmentName);
 
         private static ActivityEntryResponse ToActivityEntry(ActivityEventRecord e) =>
             new(e.Id, e.EventType, e.DelayNumber, e.DelayTitle, e.ActorName, e.FromStatusCode, e.ToStatusCode,

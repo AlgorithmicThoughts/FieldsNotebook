@@ -20,6 +20,8 @@ const EVENT_TITLES: Record<string, string> = {
   'delay.advanceNoticeRaised': 'Advance notice raised',
   'delay.acknowledged': 'Delay acknowledged',
   'delay.expectedReadyChanged': 'Estimate updated',
+  // The database records a revised completion time as delay.readyTimeUpdated.
+  'delay.readyTimeUpdated': 'Estimate updated',
   'delay.readyForHandover': 'Ready for verification',
   'delay.handoverCheckRequested': 'Handover check requested',
   'delay.handoverVerified': 'Handover verified',

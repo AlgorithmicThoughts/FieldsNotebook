@@ -32,6 +32,10 @@ namespace Accessors.Delays
                     owner.Name,
                     d.ReportType,
                     d.LocationName ?? segment.Name,
+                    segment.Name,
+                    d.SiteMapId,
+                    d.PinX,
+                    d.PinY,
                     d.CreatedAt,
                     context.DelayCycles.Count(c => c.DelayId == d.Id),
                     context.DelayCycles.Any(c => c.DelayId == d.Id && c.ClosedAt == null),
@@ -52,9 +56,11 @@ namespace Accessors.Delays
                 where delayIds.Contains(i.DelayId)
                 orderby crew.Name
                 select new ActiveDelayImpactRecord(
+                    i.Id,
                     i.DelayId,
                     i.BlockedCrewId,
                     crew.Name,
+                    i.BlockedWorkItemId,
                     context.DelayImpactVerifications.Any(v =>
                         v.DelayImpactId == i.Id
                         && context.DelayCycles.Any(c => c.DelayCycleId == v.DelayCycleId && c.ClosedAt == null))))
