@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { useRef, useState, type KeyboardEvent, type MouseEvent, type RefObject } from 'react'
 import { MapPin } from 'lucide-react'
 import {
   DELAY_STATUS_DISPLAY,
@@ -123,6 +123,7 @@ function PinMarker({ item, isSelected, onSelect }: PinMarkerProps) {
 }
 
 interface SiteMapProps {
+  imageUri?: string
   imageName: string
   /** Delays carrying a pin. */
   pins: SiteMapPin[]
@@ -133,6 +134,56 @@ interface SiteMapProps {
   draftPin?: DelayPin | null
   onPlaceDraftPin?: (pin: DelayPin) => void
   compact?: boolean
+}
+
+interface MapContentsProps extends Pick<SiteMapProps, 'imageName' | 'pins' | 'selectedDelayNumber' | 'onSelectPin'> {
+  imageUri: string
+  imageRef: RefObject<HTMLImageElement | null>
+  onImageError: () => void
+  editable: boolean
+  draftPin: DelayPin | null
+  compact: boolean
+}
+
+/** Renders the real project image and its normalized pins. */
+function MapContents({
+  imageName, imageUri, imageRef, onImageError, pins,
+  selectedDelayNumber, onSelectPin, editable, draftPin, compact,
+}: MapContentsProps) {
+  return (
+    <>
+      <img
+        ref={imageRef}
+        src={imageUri}
+        alt={imageName}
+        draggable={false}
+        onError={onImageError}
+        className="block w-full select-none"
+      />
+      <span
+        className={`pointer-events-none absolute bottom-3 left-[14px] rounded-[5px] bg-card px-[7px] py-1 text-muted-foreground ${compact ? 'text-[9px]' : 'text-[10px]'}`}
+      >
+        {imageUri === SITE_IMAGE_URL ? 'Sample map · Not for layout' : imageName}
+      </span>
+      {pins.map((item) => (
+        <PinMarker
+          key={item.delayNumber}
+          item={item}
+          isSelected={item.delayNumber === selectedDelayNumber}
+          // A pin inside the picker would nest a button in a button.
+          onSelect={editable ? undefined : onSelectPin}
+        />
+      ))}
+      {draftPin ? (
+        <span
+          className={`${MARKER_SHAPE} pointer-events-none text-[var(--accent)]`}
+          style={positionOf(draftPin)}
+        >
+          <MarkerGlyph label="NEW" isHighlighted />
+        </span>
+      ) : null}
+    </>
+  )
 }
 
 /**
@@ -146,6 +197,7 @@ interface SiteMapProps {
  */
 export function SiteMap({
   imageName,
+  imageUri = SITE_IMAGE_URL,
   pins,
   selectedDelayNumber,
   onSelectPin,
@@ -190,39 +242,19 @@ export function SiteMap({
     )
   }
 
-  const contents: ReactNode = (
-    <>
-      <img
-        ref={imageRef}
-        src={SITE_IMAGE_URL}
-        alt={imageName}
-        draggable={false}
-        onError={() => setIsUnavailable(true)}
-        className="block w-full select-none"
-      />
-      <span
-        className={`pointer-events-none absolute bottom-3 left-[14px] rounded-[5px] bg-card px-[7px] py-1 text-muted-foreground ${compact ? 'text-[9px]' : 'text-[10px]'}`}
-      >
-        Sample map · Not for layout
-      </span>
-      {pins.map((item) => (
-        <PinMarker
-          key={item.delayNumber}
-          item={item}
-          isSelected={item.delayNumber === selectedDelayNumber}
-          // A pin inside the picker would nest a button in a button.
-          onSelect={editable ? undefined : onSelectPin}
-        />
-      ))}
-      {draftPin ? (
-        <span
-          className={`${MARKER_SHAPE} pointer-events-none text-[var(--accent)]`}
-          style={positionOf(draftPin)}
-        >
-          <MarkerGlyph label="NEW" isHighlighted />
-        </span>
-      ) : null}
-    </>
+  const contents = (
+    <MapContents
+      imageName={imageName}
+      imageUri={imageUri}
+      imageRef={imageRef}
+      onImageError={() => setIsUnavailable(true)}
+      pins={pins}
+      selectedDelayNumber={selectedDelayNumber}
+      onSelectPin={onSelectPin}
+      editable={editable}
+      draftPin={draftPin}
+      compact={compact}
+    />
   )
 
   if (editable) {

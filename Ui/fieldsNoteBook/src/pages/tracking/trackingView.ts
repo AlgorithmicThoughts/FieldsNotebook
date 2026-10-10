@@ -108,12 +108,12 @@ export function toVisibleDelays(
 export type TrackingState =
   | { key: null }
   | { key: string; status: 'error'; message: string }
-  | { key: string; status: 'ready'; delays: DelaySummary[] }
+  | { key: string; status: 'ready'; delays: DelaySummary[]; emptyMessage: string }
 
 export type TrackingResultsView =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; delays: DelaySummary[] }
+  | { kind: 'ready'; delays: DelaySummary[]; emptyMessage?: string }
 
 /** What the results card shows for the current request, tab, and search term. */
 export function toResultsView(
@@ -131,7 +131,11 @@ export function toResultsView(
     return { kind: 'error', message: state.message }
   }
 
-  return { kind: 'ready', delays: toVisibleDelays(state.delays, user, filter, search) }
+  return {
+    kind: 'ready',
+    delays: toVisibleDelays(state.delays, user, filter, search),
+    emptyMessage: state.delays.length === 0 ? state.emptyMessage : undefined,
+  }
 }
 
 /** The delays of the current request, whatever the tab and search term hide. */

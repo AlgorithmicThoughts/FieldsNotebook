@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { getDelaysByProjectId } from "@/api/delays";
+import { getProjectTracking } from "@/api/tracking";
 import { isAbortError, isApiError } from "@/api/errors";
 import { Button } from "@/components/common/Button";
 import { PillTabs } from "@/components/common/Tabs";
-import { AddDelayModal } from "@/components/delays/AddDelayModal";
-import type { DelaySummary } from "@/domain/delays";
 import { canReportDelay } from "@/domain/permissions";
 import { useWorkspace } from "@/routes/useWorkspace";
 import { DelayDetailModal } from "./components/DelayDetailModal";
@@ -39,7 +37,6 @@ export function TrackingPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<TrackingFilter>("all");
   const [reloadCount, setReloadCount] = useState(0);
-  const [isReportOpen, setIsReportOpen] = useState(false);
   const [state, setState] = useState<TrackingState>({ key: null });
 
   // Scope never widens past the assigned projects. The memo holds one array
@@ -51,19 +48,20 @@ export function TrackingPage() {
         : [user.activeProjectId],
     [scope, user.projects, user.activeProjectId],
   );
-  const requestKey = `${projectIds.join(",")}:${reloadCount}`;
+  const requestKey = `${user.id}:${projectIds.join(",")}:${reloadCount}`;
 
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
 
-    Promise.all(projectIds.map((id) => getDelaysByProjectId(id, { signal })))
+    Promise.all(projectIds.map((id) => getProjectTracking(id, { signal })))
       .then((results) => {
         if (!signal.aborted) {
           setState({
             key: requestKey,
             status: "ready",
-            delays: results.flat(),
+            delays: results.flatMap((result) => result.delays.map((row) => row.summary)),
+            emptyMessage: results.map((result) => result.projectName + " has no tracking information.").join(" "),
           });
         }
       })
@@ -89,15 +87,6 @@ export function TrackingPage() {
   const openedDelay =
     loaded.find((delay) => delay.number === openedNumber) ?? null;
 
-  /** A delay the Foreman just raised joins the list without another request. */
-  function addDelay(delay: DelaySummary) {
-    setState((current) =>
-      current.key === null || current.status === "error"
-        ? current
-        : { ...current, delays: [delay, ...current.delays] },
-    );
-  }
-
   return (
     <>
       <div className="page-title">
@@ -114,7 +103,8 @@ export function TrackingPage() {
             label="Report delay"
             variant="primary"
             icon={Plus}
-            onClick={() => setIsReportOpen(true)}
+            disabled
+            title="Reporting delays is not available yet."
           />
         ) : null}
       </div>
@@ -149,14 +139,6 @@ export function TrackingPage() {
         summary={openedDelay}
         user={user}
         onClose={() => setSearchParams({}, { replace: true })}
-      />
-
-      <AddDelayModal
-        open={isReportOpen}
-        onOpenChange={setIsReportOpen}
-        user={user}
-        projectId={user.activeProjectId}
-        onCreated={addDelay}
       />
     </>
   );

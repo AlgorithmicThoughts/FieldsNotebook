@@ -1,4 +1,7 @@
 using System.Text.Json.Serialization;
+using Accessors;
+using Managers;
+using Managers.Delays;
 using Accessors.Activity;
 using Accessors.Delays;
 using Accessors.Notifications;
@@ -20,6 +23,9 @@ var connectionString = builder.Configuration.GetConnectionString("FieldNotebook"
     ?? throw new InvalidOperationException("Connection string 'FieldNotebook' is not configured.");
 builder.Services.AddDbContext<FieldNotebookContext>(options => options.UseSqlServer(connectionString));
 
+builder.Services.AddScoped<ManagerFactory>();
+builder.Services.AddScoped<AccessorFactory>();
+builder.Services.AddScoped<IDelayManager, DelayManager>();
 builder.Services.AddScoped<IUserAccessor, UserAccessor>();
 builder.Services.AddScoped<IProjectAccessAccessor, ProjectAccessAccessor>();
 builder.Services.AddScoped<IDelayAccessor, DelayAccessor>();

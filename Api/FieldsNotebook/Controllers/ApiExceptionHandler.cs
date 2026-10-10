@@ -16,22 +16,34 @@ namespace FieldsNotebook.Controllers
                 return true;
             }
 
-            if (exception is not ProjectAccessDeniedException)
+            var problem = ToProblem(exception);
+            if (problem is null)
             {
                 return false;
             }
 
-            httpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+            httpContext.Response.StatusCode = problem.Status!.Value;
             return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
             {
                 HttpContext = httpContext,
                 Exception = exception,
-                ProblemDetails = new ProblemDetails
-                {
-                    Status = StatusCodes.Status403Forbidden,
-                    Title = "You do not have access to this project.",
-                },
+                ProblemDetails = problem,
             });
         }
+
+        private static ProblemDetails? ToProblem(Exception exception) => exception switch
+        {
+            ProjectAccessDeniedException => new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = "You do not have access to this project.",
+            },
+            ArgumentOutOfRangeException => new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Project and user IDs must be greater than zero.",
+            },
+            _ => null,
+        };
     }
 }
