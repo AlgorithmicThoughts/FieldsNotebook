@@ -1,7 +1,7 @@
 import { CirclePause, ClipboardCheck, Users } from 'lucide-react'
 import type { DelaySummary } from '@/domain/delays'
 import { canVerifyHandover } from '@/domain/permissions'
-import type { CurrentUser } from '@/domain/users'
+import { coversCrew, type CurrentUser } from '@/domain/users'
 import { formatProjectDayLabel, formatProjectTime } from '@/lib/projectTime'
 import type { AdvanceNotice } from './components/AdvanceNoticeHero'
 import type { HomeMetric } from './components/MetricCard'
@@ -18,11 +18,11 @@ function isActive(delay: DelaySummary): boolean {
 }
 
 function affectsCrew(delay: DelaySummary, user: CurrentUser): boolean {
-  return delay.blockedCrewNames.includes(user.crewName)
+  return delay.blockedCrewNames.some((name) => coversCrew(user, name))
 }
 
 function isOwnedByCrew(delay: DelaySummary, user: CurrentUser): boolean {
-  return delay.ownerCrewName === user.crewName
+  return coversCrew(user, delay.ownerCrewName)
 }
 
 /** Counts across every active delay in the project, not only the rows shown. */

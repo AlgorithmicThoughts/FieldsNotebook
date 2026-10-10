@@ -23,16 +23,28 @@ namespace Managers.Users
             ArgumentOutOfRangeException.ThrowIfLessThan(userId, 1);
 
             var user = await userAccessor.GetCurrentUserAsync(userId, cancellationToken);
-            return user is null
-                ? null
-                : new CurrentUserResponse(user.Id, user.DisplayName, user.Projects.Select(p => ToProjectResponse(p, user.Crews)).ToList());
+            if (user is null)
+            {
+                return null;
+            }
+
+            var settings = user.Settings ?? UserSettingsDefaults.Value;
+            return new CurrentUserResponse(
+                user.Id,
+                user.DisplayName,
+                user.Email,
+                user.Phone,
+                settings.ThemePreference,
+                settings.EmailEnabled,
+                settings.SmsEnabled,
+                user.Projects.Select(p => ToProjectResponse(p, user.Crews)).ToList());
         }
 
         private static CurrentUserProjectResponse ToProjectResponse(UserProjectRecord project, IReadOnlyList<CrewLeadRecord> crews)
         {
-            var crewNames = CrewCoverageEngine
+            var coveredCrews = CrewCoverageEngine
                 .GetCoveredCrews(project.RoleName, crews.Where(c => c.ProjectId == project.ProjectId))
-                .Select(c => c.Name)
+                .Select(c => new CrewResponse(c.CrewId, c.Name))
                 .ToList();
 
             return new CurrentUserProjectResponse(
@@ -41,8 +53,8 @@ namespace Managers.Users
                 project.Code,
                 project.DistrictName,
                 project.RoleName,
-                crewNames,
-                CrewCoverageEngine.CanReportDelay(project.RoleName, crewNames.Count));
+                coveredCrews,
+                CrewCoverageEngine.CanReportDelay(project.RoleName, coveredCrews.Count));
         }
     }
 }

@@ -1,6 +1,7 @@
 using Accessors.Users;
 using Common.Roles;
 using Common.Users;
+using DataContract.Me;
 using Managers.Users;
 using Moq;
 
@@ -20,7 +21,7 @@ namespace Tests.Managers
             var user = await new UserManager(_userAccessor.Object).GetCurrentUserAsync(3, CancellationToken.None);
 
             var project = Assert.Single(user!.Projects);
-            Assert.Equal(["Welding and Erection"], project.CrewNames);
+            Assert.Equal([new CrewResponse(3, "Welding and Erection")], project.Crews);
             Assert.True(project.CanReportDelay);
         }
 
@@ -36,8 +37,18 @@ namespace Tests.Managers
             var user = await new UserManager(_userAccessor.Object).GetCurrentUserAsync(6, CancellationToken.None);
 
             var project = Assert.Single(user!.Projects);
-            Assert.Equal(["Coatings", "Welding and Erection"], project.CrewNames);
+            Assert.Equal(["Coatings", "Welding and Erection"], project.Crews.Select(c => c.Name));
             Assert.False(project.CanReportDelay);
+        }
+
+        [Fact]
+        public async Task GetCurrentUserAsync_NoSettingsRow_ReturnsDefaults()
+        {
+            SetUpUser([], []);
+
+            var user = await new UserManager(_userAccessor.Object).GetCurrentUserAsync(3, CancellationToken.None);
+
+            Assert.Equal(("System", true, false), (user!.ThemePreference, user.EmailEnabled, user.SmsEnabled));
         }
 
         [Fact]
@@ -60,6 +71,7 @@ namespace Tests.Managers
         private void SetUpUser(IReadOnlyList<UserProjectRecord> projects, IReadOnlyList<CrewLeadRecord> crews) =>
             _userAccessor
                 .Setup(a => a.GetCurrentUserAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((int id, CancellationToken _) => new CurrentUserRecord(id, "Demo User", projects, crews));
+                .ReturnsAsync((int id, CancellationToken _) =>
+                    new CurrentUserRecord(id, "Demo User", "demo@example.com", null, Settings: null, projects, crews));
     }
 }

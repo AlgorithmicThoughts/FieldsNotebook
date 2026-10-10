@@ -14,11 +14,20 @@ namespace Accessors.Users
 
         public async Task<CurrentUserRecord?> GetCurrentUserAsync(int userId, CancellationToken cancellationToken)
         {
-            var displayName = await context.Users
-                .Where(u => u.Id == userId && u.IsActive)
-                .Select(u => u.DisplayName)
+            var user = await (
+                from u in context.Users
+                join s in context.UserSettings on u.Id equals s.UserId into settings
+                from s in settings.DefaultIfEmpty()
+                where u.Id == userId && u.IsActive
+                select new
+                {
+                    u.DisplayName,
+                    u.Email,
+                    u.Phone,
+                    Settings = s == null ? null : new UserSettingsRecord(s.ThemePreference, s.EmailEnabled, s.SmsEnabled),
+                })
                 .SingleOrDefaultAsync(cancellationToken);
-            if (displayName is null)
+            if (user is null)
             {
                 return null;
             }
@@ -40,7 +49,7 @@ namespace Accessors.Users
                 .Select(c => new CrewLeadRecord(c.Id, c.ProjectId, c.Name, c.ForemanLeadId == userId))
                 .ToListAsync(cancellationToken);
 
-            return new CurrentUserRecord(userId, displayName, projects, crews);
+            return new CurrentUserRecord(userId, user.DisplayName, user.Email, user.Phone, user.Settings, projects, crews);
         }
     }
 }

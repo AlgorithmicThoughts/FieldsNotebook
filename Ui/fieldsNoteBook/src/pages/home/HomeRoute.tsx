@@ -9,6 +9,7 @@ import { AddDelayModal } from '@/components/delays/AddDelayModal'
 import type { ActivityEntry } from '@/domain/activity'
 import type { DelaySummary } from '@/domain/delays'
 import { canReportDelay } from '@/domain/permissions'
+import { crewLabel } from '@/domain/users'
 import { formatProjectDate, formatProjectTime } from '@/lib/projectTime'
 import { useWorkspace } from '@/routes/useWorkspace'
 import { HomePage } from './HomePage'
@@ -120,7 +121,7 @@ export function HomeRoute() {
     <>
       <HomePage
         projectName={projectName}
-        crewName={user.crewName}
+        crewName={crewLabel(user)}
         roleName={user.roleName}
         todayLabel={formatProjectDate(fetchedAt)}
         canReportDelay={canReportDelay(user)}

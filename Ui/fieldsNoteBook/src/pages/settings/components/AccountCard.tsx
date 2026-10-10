@@ -1,5 +1,5 @@
 import { Card, CardHeading } from '@/components/common/Card'
-import type { CurrentUser } from '@/domain/users'
+import { crewLabel, type CurrentUser } from '@/domain/users'
 
 interface AccountCardProps {
   user: CurrentUser
@@ -42,7 +42,7 @@ export function AccountCard({ user, projectName }: AccountCardProps) {
       <div className="setting-row">
         <div>
           <strong>Crew</strong>
-          <p>{user.crewName}</p>
+          <p>{crewLabel(user)}</p>
         </div>
       </div>
     </Card>

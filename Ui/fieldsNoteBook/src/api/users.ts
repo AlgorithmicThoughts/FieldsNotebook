@@ -1,7 +1,7 @@
-import type { CurrentUser, RoleName, ThemePreference, UserProject } from '@/domain/users'
-import { mockRequest } from './client'
-import { ApiError } from './errors'
-import { CREWS, PROJECTS, ROLES, USERS, USER_PROJECTS, USER_ROLES, USER_SETTINGS } from './fixtures'
+import type { CurrentUser, RoleName, ThemePreference, UserCrew, UserProject } from '@/domain/users'
+import { apiGet, mockRequest } from './client'
+import { ApiError, isApiError } from './errors'
+import { CREWS, DISTRICTS, PROJECTS, ROLES, USERS, USER_PROJECTS, USER_ROLES, USER_SETTINGS } from './fixtures'
 import type { RequestOptions, UserRow, UserSettingsRow } from './types'
 
 interface UserSettingsValues {
@@ -28,7 +28,12 @@ function projectsOf(userId: number): UserProject[] {
   return USER_PROJECTS.filter((row) => row.UserId === userId && row.IsActive)
     .map((row) => PROJECTS.find((project) => project.Id === row.ProjectId))
     .filter((project) => project !== undefined)
-    .map((project) => ({ id: project.Id, name: project.Name, code: project.Code }))
+    .map((project) => ({
+      id: project.Id,
+      name: project.Name,
+      code: project.Code,
+      districtName: DISTRICTS.find((district) => district.Id === project.DistrictId)?.Name ?? null,
+    }))
 }
 
 /**
@@ -48,7 +53,7 @@ function roleNameOf(userId: number, projectId: number): RoleName {
   return role.Name
 }
 
-function crewOf(userId: number, projectId: number): { id: number; name: string } {
+function crewOf(userId: number, projectId: number): UserCrew {
   const crew = CREWS.find(
     (candidate) =>
       candidate.ProjectId === projectId &&
@@ -103,8 +108,7 @@ function toCurrentUser(row: UserRow): CurrentUser {
     email: row.Email,
     phone: row.Phone,
     roleName: roleNameOf(row.Id, activeProject.id),
-    crewId: crew.id,
-    crewName: crew.name,
+    crews: [crew],
     activeProjectId: activeProject.id,
     projects,
     ...settings,
@@ -121,9 +125,82 @@ function userRowOf(userId: number): UserRow {
   return row
 }
 
-/** The signed-in user, with the role they hold on their active project. */
-export async function getUser(userId: number, options?: RequestOptions): Promise<CurrentUser> {
-  return mockRequest(options, () => toCurrentUser(userRowOf(userId)))
+/** GET /api/me */
+interface MeResponse {
+  id: number
+  displayName: string
+  email: string
+  phone: string | null
+  themePreference: ThemePreference
+  emailEnabled: boolean
+  smsEnabled: boolean
+  projects: MeProject[]
+}
+
+interface MeProject {
+  projectId: number
+  name: string
+  code: string
+  districtName: string
+  roleName: RoleName
+  crews: UserCrew[]
+  canReportDelay: boolean
+}
+
+/**
+ * Until a project switcher exists, the active project is the first one where
+ * the user leads or directs a crew, so Home opens on work they own.
+ */
+function defaultProjectOf(projects: MeProject[]): MeProject {
+  const project = projects.find((candidate) => candidate.crews.length > 0) ?? projects[0]
+
+  if (project === undefined) {
+    throw new ApiError(404, 'You are not assigned to a project in Field Notebook.')
+  }
+
+  return project
+}
+
+function fromMeResponse(me: MeResponse): CurrentUser {
+  const active = defaultProjectOf(me.projects)
+
+  return {
+    id: me.id,
+    displayName: me.displayName,
+    initials: initialsOf(me.displayName),
+    email: me.email,
+    phone: me.phone,
+    roleName: active.roleName,
+    crews: active.crews,
+    activeProjectId: active.projectId,
+    projects: me.projects.map((project) => ({
+      id: project.projectId,
+      name: project.name,
+      code: project.code,
+      districtName: project.districtName,
+    })),
+    themePreference: me.themePreference,
+    emailEnabled: me.emailEnabled,
+    smsEnabled: me.smsEnabled,
+  }
+}
+
+/**
+ * The signed-in user, with the role they hold on their active project. The
+ * API identifies the user from the request, so `userId` only scopes the cache
+ * key the caller already uses.
+ */
+export async function getUser(_userId: number, options?: RequestOptions): Promise<CurrentUser> {
+  try {
+    return fromMeResponse(await apiGet<MeResponse>('/api/me', options))
+  } catch (error) {
+    // The API answers 404 for an unknown or inactive user.
+    if (isApiError(error) && error.status === 404) {
+      throw new ApiError(404, 'That user is not available in Field Notebook.')
+    }
+
+    throw error
+  }
 }
 
 /** The four UserSettings columns a user can change. There is no fifth preference. */

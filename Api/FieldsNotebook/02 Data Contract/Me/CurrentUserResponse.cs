@@ -1,6 +1,16 @@
 namespace DataContract.Me
 {
-    public sealed record CurrentUserResponse(int Id, string DisplayName, IReadOnlyList<CurrentUserProjectResponse> Projects);
+    /// <summary>GET /api/me — the signed-in user, their settings, and every active project assignment.</summary>
+    /// <param name="ThemePreference">UserSettings.ThemePreference: System, Light, or Dark.</param>
+    public sealed record CurrentUserResponse(
+        int Id,
+        string DisplayName,
+        string Email,
+        string? Phone,
+        string ThemePreference,
+        bool EmailEnabled,
+        bool SmsEnabled,
+        IReadOnlyList<CurrentUserProjectResponse> Projects);
 
     /// <summary>One accessible project with the user's role and the crews that role covers.</summary>
     public sealed record CurrentUserProjectResponse(
@@ -9,6 +19,8 @@ namespace DataContract.Me
         string Code,
         string DistrictName,
         string RoleName,
-        IReadOnlyList<string> CrewNames,
+        IReadOnlyList<CrewResponse> Crews,
         bool CanReportDelay);
+
+    public sealed record CrewResponse(int Id, string Name);
 }
