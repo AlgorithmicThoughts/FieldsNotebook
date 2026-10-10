@@ -1,6 +1,8 @@
 using Common.Users;
 using Database;
+using Database.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace Accessors.Users
 {
@@ -50,6 +52,55 @@ namespace Accessors.Users
                 .ToListAsync(cancellationToken);
 
             return new CurrentUserRecord(userId, user.DisplayName, user.Email, user.Phone, user.Settings, projects, crews);
+        }
+
+        public async Task<UserSettingsRecord> SaveSettingsAsync(int userId, UserSettingsChangeRecord change, CancellationToken cancellationToken)
+        {
+            // One UPDATE that sets only the changed columns, so a theme save and a channel save
+            // arriving together cannot overwrite each other's value.
+            var updated = await context.UserSettings
+                .Where(s => s.UserId == userId)
+                .ExecuteUpdateAsync(setters => SetChangedColumns(setters, change), cancellationToken);
+            if (updated == 0)
+            {
+                await InsertSettingsAsync(userId, change, cancellationToken);
+            }
+
+            return await context.UserSettings.AsNoTracking()
+                .Where(s => s.UserId == userId)
+                .Select(s => new UserSettingsRecord(s.ThemePreference, s.EmailEnabled, s.SmsEnabled))
+                .SingleAsync(cancellationToken);
+        }
+
+        private static void SetChangedColumns(UpdateSettersBuilder<UserSettings> setters, UserSettingsChangeRecord change)
+        {
+            if (change.ThemePreference is { } theme)
+            {
+                setters.SetProperty(s => s.ThemePreference, theme);
+            }
+
+            if (change.EmailEnabled is { } email)
+            {
+                setters.SetProperty(s => s.EmailEnabled, email);
+            }
+
+            if (change.SmsEnabled is { } sms)
+            {
+                setters.SetProperty(s => s.SmsEnabled, sms);
+            }
+        }
+
+        private async Task InsertSettingsAsync(int userId, UserSettingsChangeRecord change, CancellationToken cancellationToken)
+        {
+            var defaults = UserSettingsDefaults.Value;
+            context.UserSettings.Add(new UserSettings
+            {
+                UserId = userId,
+                ThemePreference = change.ThemePreference ?? defaults.ThemePreference,
+                EmailEnabled = change.EmailEnabled ?? defaults.EmailEnabled,
+                SmsEnabled = change.SmsEnabled ?? defaults.SmsEnabled,
+            });
+            await context.SaveChangesAsync(cancellationToken);
         }
     }
 }

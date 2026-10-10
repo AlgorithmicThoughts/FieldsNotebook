@@ -39,3 +39,15 @@ Accept: application/json
 X-Demo-User-Id: 3
 
 ###
+
+PATCH {{FieldsNotebook_HostAddress}}/api/me/settings
+Accept: application/json
+Content-Type: application/json
+X-Demo-User-Id: 3
+
+{
+  "themePreference": "Dark",
+  "emailEnabled": true
+}
+
+###
