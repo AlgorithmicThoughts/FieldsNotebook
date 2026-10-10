@@ -40,8 +40,8 @@ export function TrackingResults({ view, onRetry, onOpenDelay }: TrackingResultsP
 
       {view.delays.length === 0 ? (
         <EmptyDelays
-          title="No delays match"
-          detail="Change the scope, the filter, or the search term to see more."
+          title={view.emptyMessage ?? 'No delays match'}
+          detail={view.emptyMessage ? 'Tracking records will appear here when available.' : 'Change the scope, the filter, or the search term to see more.'}
         />
       ) : (
         view.delays.map((delay) => (

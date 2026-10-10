@@ -66,7 +66,9 @@ function DelayDetailBody({ delay, siteMap, user }: DelayDetailBodyProps) {
 
           {siteMap !== null && pin !== null && delay.siteMapId === siteMap.id ? (
             <SiteMap
+              key={siteMap.uri}
               imageName={siteMap.name}
+              imageUri={siteMap.uri}
               pins={[
                 {
                   delayNumber: delay.number,

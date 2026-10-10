@@ -81,16 +81,9 @@ function settingsOf(userId: number): UserSettingsValues {
   }
 }
 
-/**
- * The mock has no session, so the chosen project lives here until the page
- * reloads. The real API keeps it with the session and this map goes away.
- */
-const ACTIVE_PROJECT_BY_USER = new Map<number, number>()
-
-/** The chosen project when the user has picked one, and their first otherwise. */
-function activeProjectOf(userId: number, projects: UserProject[]): UserProject {
-  const chosenId = ACTIVE_PROJECT_BY_USER.get(userId)
-  const project = projects.find((candidate) => candidate.id === chosenId) ?? projects[0]
+/** The mock settings path has no session, so it answers for the first project. */
+function activeProjectOf(projects: UserProject[]): UserProject {
+  const project = projects[0]
 
   if (project === undefined) {
     throw new ApiError(404, 'You are not assigned to a project in Field Notebook.')
@@ -101,7 +94,7 @@ function activeProjectOf(userId: number, projects: UserProject[]): UserProject {
 
 function toCurrentUser(row: UserRow): CurrentUser {
   const projects = projectsOf(row.Id)
-  const activeProject = activeProjectOf(row.Id, projects)
+  const activeProject = activeProjectOf(projects)
   const crew = crewOf(row.Id, activeProject.id)
   const settings = settingsOf(row.Id)
 
@@ -152,8 +145,8 @@ interface MeProject {
 }
 
 /**
- * Until a project switcher exists, the active project is the first one where
- * the user leads or directs a crew, so Home opens on work they own.
+ * Before the user picks a project, the active one is the first where they lead
+ * or direct a crew, so Home opens on work they own.
  */
 function defaultProjectOf(projects: MeProject[]): MeProject {
   const project = projects.find((candidate) => candidate.crews.length > 0) ?? projects[0]
@@ -165,8 +158,18 @@ function defaultProjectOf(projects: MeProject[]): MeProject {
   return project
 }
 
-function fromMeResponse(me: MeResponse): CurrentUser {
-  const active = defaultProjectOf(me.projects)
+/** The project the user picked, which must be one they are assigned to. */
+function chosenProjectOf(projects: MeProject[], projectId: number): MeProject {
+  const project = projects.find((candidate) => candidate.projectId === projectId)
+
+  if (project === undefined) {
+    throw new ApiError(403, 'You are not assigned to that project in Field Notebook.')
+  }
+
+  return project
+}
+
+function fromMeResponse(me: MeResponse, active: MeProject): CurrentUser {
 
   return {
     id: me.id,
@@ -189,14 +192,9 @@ function fromMeResponse(me: MeResponse): CurrentUser {
   }
 }
 
-/**
- * The signed-in user, with the role they hold on their active project. The
- * API identifies the user from the request, so `userId` only scopes the cache
- * key the caller already uses.
- */
-export async function getUser(_userId: number, options?: RequestOptions): Promise<CurrentUser> {
+async function fetchMe(options?: RequestOptions): Promise<MeResponse> {
   try {
-    return fromMeResponse(await apiGet<MeResponse>('/api/me', options))
+    return await apiGet<MeResponse>('/api/me', options)
   } catch (error) {
     // The API answers 404 for an unknown or inactive user.
     if (isApiError(error) && error.status === 404) {
@@ -208,25 +206,29 @@ export async function getUser(_userId: number, options?: RequestOptions): Promis
 }
 
 /**
- * Moves the user to another of their assigned projects and returns the user as
- * they stand on it, since the role and the crew both change with the project.
+ * The signed-in user, with the role they hold on their default project. The
+ * API identifies the user from the request, so `userId` only scopes the cache
+ * key the caller already uses.
  */
-export async function setActiveProject(
-  userId: number,
+export async function getUser(_userId: number, options?: RequestOptions): Promise<CurrentUser> {
+  const me = await fetchMe(options)
+
+  return fromMeResponse(me, defaultProjectOf(me.projects))
+}
+
+/**
+ * The signed-in user as they stand on another of their assigned projects,
+ * since the role and the crews both change with the project. The API keeps no
+ * active project, so the choice lives with the caller.
+ */
+export async function getUserOnProject(
+  _userId: number,
   projectId: number,
   options?: RequestOptions,
 ): Promise<CurrentUser> {
-  return mockRequest(options, () => {
-    const row = userRowOf(userId)
+  const me = await fetchMe(options)
 
-    if (!projectsOf(userId).some((project) => project.id === projectId)) {
-      throw new ApiError(403, 'You are not assigned to that project in Field Notebook.')
-    }
-
-    ACTIVE_PROJECT_BY_USER.set(userId, projectId)
-
-    return toCurrentUser(row)
-  })
+  return fromMeResponse(me, chosenProjectOf(me.projects, projectId))
 }
 
 /** The four UserSettings columns a user can change. There is no fifth preference. */
