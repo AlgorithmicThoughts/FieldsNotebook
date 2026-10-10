@@ -22,7 +22,7 @@ export interface PhotoDraft {
   longitude: number | null
 }
 
-export interface BlockerDraft {
+export interface DelayDraft {
   description: string
   ownerCrewId: number | null
   affectedCrews: AffectedCrewDraft[]
@@ -39,7 +39,7 @@ export interface BlockerDraft {
   notifyUserIds: number[]
 }
 
-export const EMPTY_BLOCKER_DRAFT: BlockerDraft = {
+export const EMPTY_DELAY_DRAFT: DelayDraft = {
   description: '',
   ownerCrewId: null,
   affectedCrews: [],
@@ -54,7 +54,7 @@ export const EMPTY_BLOCKER_DRAFT: BlockerDraft = {
   notifyUserIds: [],
 }
 
-export type BlockerField =
+export type DelayDraftField =
   | 'description'
   | 'ownerCrew'
   | 'affectedCrews'
@@ -63,10 +63,10 @@ export type BlockerField =
   | 'photos'
   | 'location'
 
-export type BlockerDraftErrors = Partial<Record<BlockerField, string>>
+export type DelayDraftErrors = Partial<Record<DelayDraftField, string>>
 
 /** GPS is optional, so a pin or a typed name has to stand in for it. */
-function hasLocation(draft: BlockerDraft): boolean {
+function hasLocation(draft: DelayDraft): boolean {
   return (
     draft.pin !== null ||
     draft.locationName.trim().length > 0 ||
@@ -75,9 +75,9 @@ function hasLocation(draft: BlockerDraft): boolean {
 }
 
 interface DraftRule {
-  field: BlockerField
+  field: DelayDraftField
   message: string
-  isBroken: (draft: BlockerDraft) => boolean
+  isBroken: (draft: DelayDraft) => boolean
 }
 
 const DRAFT_RULES: DraftRule[] = [
@@ -119,8 +119,8 @@ const DRAFT_RULES: DraftRule[] = [
   },
 ]
 
-export function validateDraft(draft: BlockerDraft): BlockerDraftErrors {
-  const errors: BlockerDraftErrors = {}
+export function validateDraft(draft: DelayDraft): DelayDraftErrors {
+  const errors: DelayDraftErrors = {}
 
   for (const rule of DRAFT_RULES) {
     if (rule.isBroken(draft)) {
@@ -135,7 +135,7 @@ export function validateDraft(draft: BlockerDraft): BlockerDraftErrors {
  * Display enforcement only. The API decides who may raise a delay; refusing
  * here saves a round trip and never grants authority the client does not have.
  */
-export function reporterError(draft: BlockerDraft, user: CurrentUser): string | null {
+export function reporterError(draft: DelayDraft, user: CurrentUser): string | null {
   if (!canReportDelay(user)) {
     return 'Only a Foreman reports a delay.'
   }
@@ -160,7 +160,7 @@ function toUtcIso(value: string, isAdvanceNotice: boolean): string | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
 }
 
-function locationSourceOf(draft: BlockerDraft): DelayLocationSource | null {
+function locationSourceOf(draft: DelayDraft): DelayLocationSource | null {
   if (draft.pin !== null) {
     return 'ManualPin'
   }
@@ -173,7 +173,7 @@ function locationSourceOf(draft: BlockerDraft): DelayLocationSource | null {
  * validate first; this keeps the contract honest rather than asserting.
  */
 export function toCreateDelayRequest(
-  draft: BlockerDraft,
+  draft: DelayDraft,
   projectId: number,
   siteMapId: number | null,
 ): CreateDelayRequest | null {

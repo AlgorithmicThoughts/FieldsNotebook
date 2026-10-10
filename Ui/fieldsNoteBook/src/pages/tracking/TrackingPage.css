@@ -1,0 +1,233 @@
+/* Toolbar: scope, search, refresh */
+.tracking-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.tracking-scope {
+  flex: none;
+  width: 250px;
+}
+
+.tracking-search {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.tracking-search > .icon {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.tracking-filters {
+  margin-top: 16px;
+}
+
+.tracking-note {
+  padding: 18px 22px 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Delay detail */
+.detail-stack {
+  display: grid;
+  gap: 22px;
+}
+
+/* The delay record on the left, the handover progress and next step on the right. */
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(250px, 1fr);
+  align-items: start;
+  gap: 26px;
+}
+
+.detail-aside {
+  display: grid;
+  align-content: start;
+  gap: 22px;
+}
+
+.step-list {
+  display: grid;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  display: flex;
+  gap: 11px;
+  padding-bottom: 22px;
+  font-size: 13px;
+}
+
+.step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: 27px;
+  bottom: 0;
+  left: 13px;
+  border-left: 1px solid var(--border);
+}
+
+.step:last-child {
+  padding-bottom: 0;
+}
+
+.step p {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.step-number {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.step.done .step-number {
+  border-color: var(--accent);
+  background: var(--soft);
+  color: var(--accent);
+}
+
+.step.current .step-number {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.action-panel {
+  display: grid;
+  gap: 5px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.action-panel p {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.action-panel button {
+  width: 100%;
+  margin-top: 7px;
+}
+
+.detail-section {
+  display: grid;
+  gap: 12px;
+}
+
+.detail-section > p {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.detail-panel {
+  display: grid;
+  gap: 7px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  font-size: 13px;
+}
+
+.detail-panel.current {
+  border-color: var(--accent);
+}
+
+.detail-panel strong {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.detail-panel p {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.detail-panel .detail-verified {
+  color: var(--resolved);
+}
+
+.detail-photos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.detail-photo {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.detail-photo img {
+  width: 100%;
+  height: 104px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.detail-events {
+  display: grid;
+}
+
+.detail-event {
+  position: relative;
+  margin-left: 7px;
+  padding: 0 0 18px 22px;
+  border-left: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.detail-event:last-child {
+  padding-bottom: 0;
+  border-color: transparent;
+}
+
+.detail-event::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: -5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--surface);
+}
+
+.detail-event small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}

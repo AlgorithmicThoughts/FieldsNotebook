@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { getProjectById } from '@/api/projects'
 import { isAbortError, isApiError } from '@/api/errors'
 import { getUser } from '@/api/users'
@@ -10,10 +10,11 @@ import { TopBar } from '@/components/layout/TopBar'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { ProjectSummary } from '@/domain/projects'
 import type { CurrentUser } from '@/domain/users'
-import { useResolvedTheme, type ThemePreference } from '@/hooks/useResolvedTheme'
 import { PROJECT_TIME_LABEL } from '@/lib/projectTime'
-import { NAV_ITEMS } from './navItems'
-import { CURRENT_USER_ID } from './session'
+import { AppStateProvider } from '@/state/AppStateProvider'
+import { useAppState } from '@/state/appState'
+import { useAuth } from '@/state/auth'
+import { navItemsWithUnread } from './navItems'
 import type { WorkspaceContext } from './useWorkspace'
 import './routes.css'
 
@@ -23,14 +24,23 @@ type SessionState =
   | { attempt: number; status: 'error'; message: string }
   | { attempt: number; status: 'ready'; user: CurrentUser; project: ProjectSummary }
 
-const UNREAD_NOTIFICATIONS = NAV_ITEMS.some((item) => item.id === 'notifications' && item.count)
-
 function messageOf(error: unknown): string {
   return isApiError(error) ? error.message : 'Field Notebook could not load your workspace.'
 }
 
-/** The shell every page renders inside. It owns the user, project, and theme. */
+/** The shell every page renders inside. Nothing loads until a user is signed in. */
 export function AppLayout() {
+  const { session } = useAuth()
+
+  if (session === null) {
+    return <Navigate to="/sign-in" replace />
+  }
+
+  return <WorkspaceLoader key={session.user.userId} userId={session.user.userId} />
+}
+
+/** Loads the signed-in user and their active project. */
+function WorkspaceLoader({ userId }: { userId: number }) {
   const [session, setSession] = useState<SessionState>({ attempt: null })
   const [attempt, setAttempt] = useState(0)
 
@@ -38,7 +48,7 @@ export function AppLayout() {
     const controller = new AbortController()
 
     const load = async () => {
-      const user = await getUser(CURRENT_USER_ID, { signal: controller.signal })
+      const user = await getUser(userId, { signal: controller.signal })
       const project = await getProjectById(user.activeProjectId, { signal: controller.signal })
 
       return { user, project }
@@ -61,7 +71,7 @@ export function AppLayout() {
       })
 
     return () => controller.abort()
-  }, [attempt])
+  }, [attempt, userId])
 
   if (session.attempt !== attempt) {
     return <WorkspaceSkeleton />
@@ -85,15 +95,19 @@ interface WorkspaceProps {
   project: ProjectSummary
 }
 
-/**
- * Mounted once the user is known, so the saved theme preference seeds the
- * state directly instead of arriving through an Effect.
- */
+/** Mounted once the user is known, so shared state starts from saved values. */
 function Workspace({ user, project }: WorkspaceProps) {
-  const [preference, setPreference] = useState<ThemePreference>(
-    () => user.themePreference.toLowerCase() as ThemePreference,
+  return (
+    <AppStateProvider user={user}>
+      <WorkspaceShell user={user} project={project} />
+    </AppStateProvider>
   )
-  const theme = useResolvedTheme(preference)
+}
+
+/** The shell itself, reading the shared state the Settings page also writes. */
+function WorkspaceShell({ user, project }: WorkspaceProps) {
+  const { theme, selectThemePreference, unreadNoticeCount } = useAppState()
+  const { signOut } = useAuth()
   const { pathname } = useLocation()
   const isFirstRender = useRef(true)
 
@@ -121,13 +135,14 @@ function Workspace({ user, project }: WorkspaceProps) {
           userRoleName={user.roleName}
           userCrewName={user.crewName}
           theme={theme}
-          hasUnreadNotifications={UNREAD_NOTIFICATIONS}
-          onThemeToggle={() => setPreference(theme === 'dark' ? 'light' : 'dark')}
+          hasUnreadNotifications={unreadNoticeCount > 0}
+          onThemeToggle={() => selectThemePreference(theme === 'dark' ? 'Light' : 'Dark')}
+          onSignOut={signOut}
         />
       }
       sidebar={
         <Sidebar
-          items={NAV_ITEMS}
+          items={navItemsWithUnread(unreadNoticeCount)}
           crewName={user.crewName}
           roleName={user.roleName}
           projectTimeLabel={PROJECT_TIME_LABEL}

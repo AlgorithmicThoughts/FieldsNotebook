@@ -46,7 +46,7 @@ export function formatProjectTime(value: Date | string): string {
 /** "Today · 7 October", "Tomorrow · 8 October", or "Friday · 9 October". */
 export function formatProjectDayLabel(value: Date | string, now: Date = new Date()): string {
   const date = new Date(value)
-  const difference = daysBetween(now, date)
+  const difference = projectDaysBetween(now, date)
 
   if (difference === 0) {
     return `Today · ${dayAndMonth.format(date)}`
@@ -59,10 +59,13 @@ export function formatProjectDayLabel(value: Date | string, now: Date = new Date
   return `${dayName.format(date)} · ${dayAndMonth.format(date)}`
 }
 
-/** Whole project-time days from one instant to another. */
-function daysBetween(from: Date, to: Date): number {
-  const fromDay = Date.parse(`${calendarDay.format(from)}T00:00:00Z`)
-  const toDay = Date.parse(`${calendarDay.format(to)}T00:00:00Z`)
+/**
+ * Whole project-time calendar days from one instant to another. 1 means the
+ * next project day; a negative number means the day already passed.
+ */
+export function projectDaysBetween(from: Date | string, to: Date | string): number {
+  const fromDay = Date.parse(`${calendarDay.format(new Date(from))}T00:00:00Z`)
+  const toDay = Date.parse(`${calendarDay.format(new Date(to))}T00:00:00Z`)
 
   return Math.round((toDay - fromDay) / 86_400_000)
 }

@@ -181,6 +181,23 @@
   color: var(--muted);
 }
 
+.page-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 26px;
+}
+
+.page-title .eyebrow {
+  margin-bottom: 7px;
+}
+
+.page-title p {
+  margin-top: 7px;
+  color: var(--muted);
+}
+
 .muted {
   color: var(--muted);
 }

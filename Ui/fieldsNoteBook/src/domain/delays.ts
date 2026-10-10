@@ -75,10 +75,38 @@ export const DELAY_TAG_ICON: Record<DelayTagCode, LucideIcon> = {
 /** Delays.ReportType. An advance notice is raised before the crew arrives. */
 export type DelayReportType = 'AfterArrival' | 'AdvanceNotice'
 
+/** DelayPhotos.Purpose. */
+export type DelayPhotoPurpose = 'InitialReport' | 'ReopenEvidence' | 'ProofOfWork'
+
+/** The order a detail view shows the photo sets in, earliest purpose first. */
+export const DELAY_PHOTO_PURPOSE_ORDER: DelayPhotoPurpose[] = [
+  'InitialReport',
+  'ReopenEvidence',
+  'ProofOfWork',
+]
+
+export const DELAY_PHOTO_PURPOSE_LABEL: Record<DelayPhotoPurpose, string> = {
+  InitialReport: 'Initial report',
+  ReopenEvidence: 'Reopen evidence',
+  ProofOfWork: 'Proof of work',
+}
+
 /** Normalised 0-1 position on the project site map. */
 export interface DelayPin {
   x: number
   y: number
+}
+
+/**
+ * One DelayImpacts row as a list needs it: the crew that cannot work and the
+ * work item it cannot start. Every affected crew keeps its own row.
+ */
+export interface DelayImpactSummary {
+  /** DelayImpacts.Id. */
+  id: number
+  crewName: string
+  /** DelayImpacts.BlockedWorkItemId, or null when no work item was named. */
+  workItemId: number | null
 }
 
 /** One delay as a list row shows it. A delay can affect several crews. */
@@ -96,6 +124,8 @@ export interface DelaySummary {
   ownerCrewName: string
   /** Every crew that DelayImpacts records for this delay. */
   blockedCrewNames: string[]
+  /** Every DelayImpacts row, so a caller can pair a crew with its work item. */
+  impacts: DelayImpactSummary[]
   /** Segments.Name, or Delays.LocationName when the user typed one. */
   locationName: string
   projectId: number
@@ -113,6 +143,99 @@ export interface DelaySummary {
   siteMapId: number | null
   /** Segments.Name, or null when the delay sits outside a segment. */
   segmentName: string | null
+}
+
+/** A delay stays active until it is resolved or withdrawn. Time alone never clears it. */
+export function isDelayActive(delay: DelaySummary): boolean {
+  return delay.statusCode !== 'Resolved' && delay.statusCode !== 'Revoked'
+}
+
+/** The author of the delay, from Delays.ReportedBy* and Delays.CreatedAt. */
+export interface DelayReporter {
+  userId: number
+  displayName: string
+  crewName: string
+  /** ISO 8601 UTC. Format at the edge, never in the DTO. */
+  reportedAt: string
+}
+
+/** One DelayCycles row. The report opens cycle one; each reopen adds another. */
+export interface DelayCycleDetail {
+  /** DelayCycles.DelayCycleId. */
+  id: number
+  /** 1 for the initial report, then 2, 3 … per reopen. Derived, not stored. */
+  sequence: number
+  createdAt: string
+  /** DelayCycles.OpenReason. Only a reopened cycle carries one. */
+  openReason: string | null
+  acknowledgmentChoice: string | null
+  acknowledgmentNote: string | null
+  acknowledgedAt: string | null
+  /** Users.DisplayName for DelayCycles.AcknowledgedByUserId. */
+  acknowledgedByName: string | null
+  /** Tentative completion time for this cycle, or null. */
+  expectedReadyAt: string | null
+  closedAt: string | null
+}
+
+/** One DelayPhotos row. A photo without GPS simply has no coordinates. */
+export interface DelayPhotoDetail {
+  id: number
+  originalUrl: string
+  /** Fits within 400 by 400 pixels and preserves proportions. */
+  thumbnailUrl: string
+  fileName: string
+  createdAt: string
+  latitude: number | null
+  longitude: number | null
+}
+
+/** The photos of one purpose, so each set carries its own heading. */
+export interface DelayPhotoGroup {
+  purpose: DelayPhotoPurpose
+  photos: DelayPhotoDetail[]
+}
+
+/** One successful handover check, from DelayImpactVerifications. */
+export interface DelayVerification {
+  verifiedByName: string
+  verifiedAt: string
+  note: string | null
+}
+
+/** One affected crew, the work item it cannot start, and its checks. */
+export interface DelayImpactDetail extends DelayImpactSummary {
+  /** WorkItems.Title for DelayImpacts.BlockedWorkItemId, or null. */
+  workItemTitle: string | null
+  /** Checks for the current cycle only. A reopened cycle needs new ones. */
+  verifications: DelayVerification[]
+}
+
+/** One ActivityEvents row as the delay history shows it. */
+export interface DelayEventDetail {
+  id: number
+  /** Open dotted string such as `delay.raised`. */
+  eventType: string
+  actorName: string
+  createdAt: string
+  /** Cycle the event belongs to, or null when it has none. */
+  cycleSequence: number | null
+  oldExpectedReadyAt: string | null
+  newExpectedReadyAt: string | null
+}
+
+/** One delay with the history, impacts, and photos the detail view needs. */
+export interface DelayDetail extends DelaySummary {
+  /** Delays.Description. */
+  description: string | null
+  reportedBy: DelayReporter
+  /** Oldest first. Cycle history is preserved, never overwritten. */
+  cycles: DelayCycleDetail[]
+  photos: DelayPhotoGroup[]
+  /** Every affected crew DelayImpacts records. Never reduced to one. */
+  impacts: DelayImpactDetail[]
+  /** Oldest first. */
+  events: DelayEventDetail[]
 }
 
 /**

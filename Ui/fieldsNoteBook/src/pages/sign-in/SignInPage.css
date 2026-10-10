@@ -1,0 +1,71 @@
+.signin-screen {
+  display: grid;
+  place-content: center;
+  grid-auto-flow: column;
+  gap: 72px;
+  min-height: 100vh;
+  padding: 48px 32px;
+  background: var(--bg);
+}
+
+.signin-hero {
+  display: grid;
+  justify-items: start;
+  gap: 22px;
+  max-width: 420px;
+}
+
+.signin-hero p {
+  color: var(--muted);
+}
+
+.signin-points {
+  display: grid;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.signin-point {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.signin-point .icon {
+  color: var(--accent);
+}
+
+.signin-card {
+  width: 400px;
+  padding: 26px 24px;
+  box-shadow: 0 18px 40px var(--shadow);
+}
+
+.signin-card h2 {
+  margin-bottom: 6px;
+}
+
+.signin-intro {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.signin-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.signin-error {
+  color: var(--urgent);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.signin-demo {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}

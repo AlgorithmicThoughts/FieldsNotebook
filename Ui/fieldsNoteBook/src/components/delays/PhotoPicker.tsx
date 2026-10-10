@@ -3,7 +3,7 @@ import { Camera, Images, MapPin, Trash2 } from 'lucide-react'
 import { readPhotoGps } from '@/lib/exifGps'
 import { Button, IconButton } from '@/components/common/Button'
 import { Icon } from '@/components/common/Icon'
-import { MAX_PHOTOS, type PhotoDraft } from './blockerDraft'
+import { MAX_PHOTOS, type PhotoDraft } from './delayDraft'
 
 /** The approved upload formats. A phone camera supplies JPG or HEIC. */
 const ACCEPTED_TYPES = 'image/jpeg,image/png,image/heic,image/heif'

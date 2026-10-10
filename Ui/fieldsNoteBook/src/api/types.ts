@@ -1,4 +1,9 @@
-import type { DelayStatusCode, DelayTagCode, DelayReportType } from '@/domain/delays'
+import type {
+  DelayPhotoPurpose,
+  DelayReportType,
+  DelayStatusCode,
+  DelayTagCode,
+} from '@/domain/delays'
 import type { RoleName, ThemePreference } from '@/domain/users'
 
 /** Every client function accepts this, so a page can cancel an obsolete call. */
@@ -59,7 +64,18 @@ export interface DelayImpactRow {
   BlockedWorkItemId: number | null
 }
 
-export type DelayPhotoPurpose = 'InitialReport' | 'ReopenEvidence' | 'ProofOfWork'
+/**
+ * One successful handover check. The table keys on the impact and the cycle,
+ * so a reopened cycle starts without the previous cycle's checks.
+ */
+export interface DelayImpactVerificationRow {
+  DelayImpactId: number
+  DelayId: number
+  DelayCycleId: number
+  VerifiedByUserId: number
+  VerifiedAt: string
+  VerificationNote: string | null
+}
 
 export interface DelayPhotoRow {
   Id: number
@@ -97,6 +113,15 @@ export interface UserRow {
   Email: string
   Phone: string | null
   IsActive: boolean
+}
+
+/**
+ * Sign-in rows for the mock API. Users holds no credential column, so the
+ * password lives only in the fixtures until a real identity provider exists.
+ */
+export interface AuthCredentialRow {
+  UserId: number
+  Password: string
 }
 
 export interface UserSettingsRow {
@@ -182,6 +207,20 @@ export interface ActivityEventRow {
   CreatedAt: string
 }
 
+/**
+ * One notice for one recipient and one event. ReadAt is set only when that
+ * recipient explicitly opens that notice.
+ */
+export interface NotificationRow {
+  Id: number
+  UserId: number
+  ProjectId: number
+  DelayId: number
+  ActivityEventId: number
+  CreatedAt: string
+  ReadAt: string | null
+}
+
 export interface WorkItemRow {
   Id: number
   ProjectId: number
@@ -198,4 +237,12 @@ export interface WorkItemTeamAssignmentRow {
   ProjectId: number
   WorkItemId: number
   CrewId: number
+}
+
+/** The successor work item cannot start until the predecessor hands over. */
+export interface WorkItemDependencyRow {
+  Id: number
+  ProjectId: number
+  PredecessorWorkItemId: number
+  SuccessorWorkItemId: number
 }

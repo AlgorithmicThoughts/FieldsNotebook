@@ -5,7 +5,7 @@ import { getDelaysByProjectId } from '@/api/delays'
 import { isAbortError, isApiError } from '@/api/errors'
 import { Button } from '@/components/common/Button'
 import { Card } from '@/components/common/Card'
-import { AddBlockerModal } from '@/components/delays/AddBlockerModal'
+import { AddDelayModal } from '@/components/delays/AddDelayModal'
 import type { ActivityEntry } from '@/domain/activity'
 import type { DelaySummary } from '@/domain/delays'
 import { canReportDelay } from '@/domain/permissions'
@@ -134,7 +134,7 @@ export function HomeRoute() {
         onViewAllDelays={() => navigate('/tracking')}
       />
 
-      <AddBlockerModal
+      <AddDelayModal
         open={isReportOpen}
         onOpenChange={setIsReportOpen}
         user={user}

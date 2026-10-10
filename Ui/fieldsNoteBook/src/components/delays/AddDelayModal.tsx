@@ -6,17 +6,17 @@ import type { CreateDelayRequest, DelayFormOptions, DelaySummary } from '@/domai
 import type { CurrentUser } from '@/domain/users'
 import { Button } from '@/components/common/Button'
 import { Modal } from '@/components/common/Modal'
-import { BlockerForm } from './BlockerForm'
+import { DelayForm } from './DelayForm'
 import {
-  EMPTY_BLOCKER_DRAFT,
+  EMPTY_DELAY_DRAFT,
   reporterError,
   toCreateDelayRequest,
   validateDraft,
-  type BlockerDraft,
+  type DelayDraft,
   type PhotoDraft,
-} from './blockerDraft'
+} from './delayDraft'
 
-const FORM_ID = 'add-blocker-form'
+const FORM_ID = 'add-delay-form'
 
 function messageOf(error: unknown): string {
   return isApiError(error)
@@ -30,7 +30,7 @@ function revokePreviews(photos: PhotoDraft[]): void {
   }
 }
 
-interface AddBlockerModalProps {
+interface AddDelayModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: CurrentUser
@@ -43,16 +43,16 @@ interface AddBlockerModalProps {
  * The delay report form. Every value stays local to this modal, and a failed
  * save keeps all of it, including the chosen photos.
  */
-export function AddBlockerModal({
+export function AddDelayModal({
   open,
   onOpenChange,
   user,
   projectId,
   onCreated,
-}: AddBlockerModalProps) {
+}: AddDelayModalProps) {
   const [options, setOptions] = useState<DelayFormOptions | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [draft, setDraft] = useState<BlockerDraft>(EMPTY_BLOCKER_DRAFT)
+  const [draft, setDraft] = useState<DelayDraft>(EMPTY_DELAY_DRAFT)
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -94,7 +94,7 @@ export function AddBlockerModal({
   const permissionError = reporterError(draft, user)
   const topError = saveError ?? loadError ?? (hasSubmitted ? permissionError : null)
 
-  function changeDraft(patch: Partial<BlockerDraft>) {
+  function changeDraft(patch: Partial<DelayDraft>) {
     setDraft((current) => ({ ...current, ...patch }))
   }
 
@@ -106,7 +106,7 @@ export function AddBlockerModal({
       const created = await createDelay(request)
 
       revokePreviews(draft.photos)
-      setDraft(EMPTY_BLOCKER_DRAFT)
+      setDraft(EMPTY_DELAY_DRAFT)
       setHasSubmitted(false)
       onCreated(created)
       onOpenChange(false)
@@ -139,7 +139,7 @@ export function AddBlockerModal({
   return (
     <Modal
       open={open}
-      title="Report a blocker"
+      title="Report a delay"
       onOpenChange={onOpenChange}
       actions={
         <>
@@ -171,7 +171,7 @@ export function AddBlockerModal({
           Loading the project's crews, work items, and site map…
         </p>
       ) : (
-        <BlockerForm
+        <DelayForm
           formId={FORM_ID}
           options={options}
           draft={draft}

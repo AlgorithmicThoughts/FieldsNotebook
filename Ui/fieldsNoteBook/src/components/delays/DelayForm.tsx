@@ -9,14 +9,14 @@ import { AffectedCrewPicker } from './AffectedCrewPicker'
 import { NotifyPeopleList } from './NotifyPeopleList'
 import { PhotoPicker } from './PhotoPicker'
 import { ReasonTagGroup } from './ReasonTagGroup'
-import { SiteMapPinPicker } from './SiteMapPinPicker'
+import { SiteMap } from './SiteMap'
 import {
   DESCRIPTION_MAX_LENGTH,
   LOCATION_NAME_MAX_LENGTH,
   MAX_PHOTOS,
-  type BlockerDraft,
-  type BlockerDraftErrors,
-} from './blockerDraft'
+  type DelayDraft,
+  type DelayDraftErrors,
+} from './delayDraft'
 
 const SPAN_BOTH = 'col-span-2'
 
@@ -39,18 +39,18 @@ function superintendentOf(
   )
 }
 
-interface BlockerFormProps {
+interface DelayFormProps {
   formId: string
   options: DelayFormOptions
-  draft: BlockerDraft
-  errors: BlockerDraftErrors
+  draft: DelayDraft
+  errors: DelayDraftErrors
   disabled: boolean
   signedInUserId: number
-  onDraftChange: (patch: Partial<BlockerDraft>) => void
+  onDraftChange: (patch: Partial<DelayDraft>) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
 
-export function BlockerForm({
+export function DelayForm({
   formId,
   options,
   draft,
@@ -59,7 +59,7 @@ export function BlockerForm({
   signedInUserId,
   onDraftChange,
   onSubmit,
-}: BlockerFormProps) {
+}: DelayFormProps) {
   const responsibleSuperintendent = superintendentOf(options, draft.ownerCrewId)
   const blockingWorkItems = options.workItems
     .filter((item) => draft.ownerCrewId === null || item.crewIds.includes(draft.ownerCrewId))
@@ -232,11 +232,20 @@ export function BlockerForm({
         description="Select the point on the site image. Photo GPS is shown with each photo and never becomes a pin."
         className={SPAN_BOTH}
       >
-        <SiteMapPinPicker
-          siteMap={options.siteMap}
-          pin={draft.pin}
-          onPinChange={(pin) => onDraftChange({ pin })}
-        />
+        {options.siteMap === null ? (
+          <p className="rounded-[12px] border border-dashed border-input bg-[var(--bg)] p-[18px] text-center text-[12px] text-muted-foreground">
+            No site image is available for this project. Enter a location name instead.
+          </p>
+        ) : (
+          <SiteMap
+            imageUrl={options.siteMap.uri}
+            imageName={options.siteMap.name}
+            pins={[]}
+            editable
+            draftPin={draft.pin}
+            onPlaceDraftPin={(pin) => onDraftChange({ pin })}
+          />
+        )}
       </FormFieldset>
 
       <FormFieldset

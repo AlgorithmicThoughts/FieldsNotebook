@@ -1,12 +1,15 @@
 import type {
+  AuthCredentialRow,
   CrewRow,
   DelayCycleRow,
   DelayImpactRow,
+  DelayImpactVerificationRow,
   DelayPhotoRow,
   DelayRow,
   DelayStatusRow,
   DelayTagRow,
   DistrictRow,
+  NotificationRow,
   ProjectRow,
   RoleRow,
   SegmentRow,
@@ -15,6 +18,7 @@ import type {
   UserRoleRow,
   UserRow,
   UserSettingsRow,
+  WorkItemDependencyRow,
   WorkItemRow,
   WorkItemTeamAssignmentRow,
 } from '../types'
@@ -66,7 +70,8 @@ export const WORK_ITEMS: WorkItemRow[] = [
     SegmentId: 1,
     PlannedStartAt: '2026-10-06T12:00:00Z',
     PlannedFinishAt: '2026-10-08T22:00:00Z',
-    ExpectedFinishAt: '2026-10-09T15:00:00Z',
+    // 2:00 PM project time on 11 October. Expected, never guaranteed.
+    ExpectedFinishAt: '2026-10-11T19:00:00Z',
     IsCompleted: false,
   },
   {
@@ -74,8 +79,8 @@ export const WORK_ITEMS: WorkItemRow[] = [
     ProjectId: 1,
     Title: 'Bay 1 frame weld',
     SegmentId: 1,
-    PlannedStartAt: '2026-10-09T12:00:00Z',
-    PlannedFinishAt: '2026-10-10T22:00:00Z',
+    PlannedStartAt: '2026-10-11T12:00:00Z',
+    PlannedFinishAt: '2026-10-11T22:00:00Z',
     ExpectedFinishAt: null,
     IsCompleted: false,
   },
@@ -106,7 +111,8 @@ export const WORK_ITEMS: WorkItemRow[] = [
     SegmentId: 4,
     PlannedStartAt: '2026-10-08T12:00:00Z',
     PlannedFinishAt: '2026-10-09T20:00:00Z',
-    ExpectedFinishAt: null,
+    // 3:00 PM project time on 11 October.
+    ExpectedFinishAt: '2026-10-11T20:00:00Z',
     IsCompleted: false,
   },
   {
@@ -114,8 +120,8 @@ export const WORK_ITEMS: WorkItemRow[] = [
     ProjectId: 1,
     Title: 'Bay 3 primer coat',
     SegmentId: 4,
-    PlannedStartAt: '2026-10-10T12:00:00Z',
-    PlannedFinishAt: '2026-10-11T20:00:00Z',
+    PlannedStartAt: '2026-10-11T13:00:00Z',
+    PlannedFinishAt: '2026-10-11T22:00:00Z',
     ExpectedFinishAt: null,
     IsCompleted: false,
   },
@@ -140,6 +146,16 @@ export const WORK_ITEM_TEAM_ASSIGNMENTS: WorkItemTeamAssignmentRow[] = [
   { Id: 6, ProjectId: 1, WorkItemId: 5, CrewId: 2 },
   { Id: 7, ProjectId: 1, WorkItemId: 6, CrewId: 4 },
   { Id: 8, ProjectId: 2, WorkItemId: 7, CrewId: 5 },
+]
+
+/**
+ * A successor waits on its predecessor's handover, which is why a delay on the
+ * predecessor explains a crew that cannot start tomorrow.
+ */
+export const WORK_ITEM_DEPENDENCIES: WorkItemDependencyRow[] = [
+  { Id: 1, ProjectId: 1, PredecessorWorkItemId: 1, SuccessorWorkItemId: 2 },
+  { Id: 2, ProjectId: 1, PredecessorWorkItemId: 5, SuccessorWorkItemId: 6 },
+  { Id: 3, ProjectId: 1, PredecessorWorkItemId: 4, SuccessorWorkItemId: 3 },
 ]
 
 export const CREWS: CrewRow[] = [
@@ -172,6 +188,21 @@ export const USERS: UserRow[] = [
   { Id: 5, DisplayName: 'Grace Kim', Email: 'grace.kim@fieldnotebook.test', Phone: '+1 402 555 0163', IsActive: true },
   { Id: 6, DisplayName: 'Dana Price', Email: 'dana.price@fieldnotebook.test', Phone: null, IsActive: true },
   { Id: 7, DisplayName: 'Rachel Nunez', Email: 'rachel.nunez@fieldnotebook.test', Phone: '+1 402 555 0194', IsActive: true },
+]
+
+/**
+ * One sign-in row per Users.Id in the seeded database, every one holding the
+ * same demo password. The user ID typed on the sign-in screen is Users.Id.
+ */
+export const AUTH_CREDENTIALS: AuthCredentialRow[] = [
+  { UserId: 1, Password: 'admin' },
+  { UserId: 2, Password: 'admin' },
+  { UserId: 3, Password: 'admin' },
+  { UserId: 4, Password: 'admin' },
+  { UserId: 5, Password: 'admin' },
+  { UserId: 6, Password: 'admin' },
+  { UserId: 7, Password: 'admin' },
+  { UserId: 8, Password: 'admin' },
 ]
 
 export const USER_SETTINGS: UserSettingsRow[] = [
@@ -479,7 +510,8 @@ export const DELAY_CYCLES: DelayCycleRow[] = [
     AcknowledgedByUserId: 2,
     AcknowledgedAt: '2026-10-07T13:50:00Z',
     AcknowledgmentNote: 'Fit-up expects to release bay 3 after lunch.',
-    ExpectedReadyAt: '2026-10-08T19:00:00Z',
+    // 2:00 PM project time on 11 October. Tentative, never binding.
+    ExpectedReadyAt: '2026-10-11T19:00:00Z',
     ClosedByUserId: null,
     ClosedAt: null,
   },
@@ -527,7 +559,7 @@ export const DELAY_CYCLES: DelayCycleRow[] = [
     AcknowledgedByUserId: null,
     AcknowledgedAt: null,
     AcknowledgmentNote: null,
-    ExpectedReadyAt: '2026-10-09T18:30:00Z',
+    ExpectedReadyAt: '2026-10-11T18:30:00Z',
     ClosedByUserId: null,
     ClosedAt: null,
   },
@@ -549,17 +581,159 @@ export const DELAY_CYCLES: DelayCycleRow[] = [
   },
 ]
 
+/**
+ * Each row names one affected crew and the work item it cannot start. Every
+ * blocked work item belongs to the blocked crew in WorkItemTeamAssignment, so
+ * the crew on the row is also the crew planned to do the work.
+ *
+ * Delay 1 blocks two different work items, and work item 5 is blocked by both
+ * delay 1 and delay 3, so resolving either one alone leaves the crew blocked.
+ */
 export const DELAY_IMPACTS: DelayImpactRow[] = [
-  { Id: 1, DelayId: 1, ProjectId: 1, BlockedCrewId: 2, BlockedWorkItemId: null },
-  { Id: 2, DelayId: 1, ProjectId: 1, BlockedCrewId: 3, BlockedWorkItemId: null },
-  { Id: 3, DelayId: 2, ProjectId: 1, BlockedCrewId: 2, BlockedWorkItemId: null },
-  { Id: 4, DelayId: 3, ProjectId: 1, BlockedCrewId: 2, BlockedWorkItemId: null },
-  { Id: 5, DelayId: 3, ProjectId: 1, BlockedCrewId: 4, BlockedWorkItemId: null },
-  { Id: 6, DelayId: 4, ProjectId: 1, BlockedCrewId: 3, BlockedWorkItemId: null },
-  { Id: 7, DelayId: 5, ProjectId: 1, BlockedCrewId: 2, BlockedWorkItemId: null },
-  { Id: 8, DelayId: 6, ProjectId: 1, BlockedCrewId: 2, BlockedWorkItemId: null },
-  { Id: 9, DelayId: 7, ProjectId: 1, BlockedCrewId: 3, BlockedWorkItemId: null },
-  { Id: 10, DelayId: 8, ProjectId: 2, BlockedCrewId: 5, BlockedWorkItemId: null },
+  { Id: 1, DelayId: 1, ProjectId: 1, BlockedCrewId: 2, BlockedWorkItemId: 5 },
+  { Id: 2, DelayId: 1, ProjectId: 1, BlockedCrewId: 3, BlockedWorkItemId: 2 },
+  { Id: 3, DelayId: 2, ProjectId: 1, BlockedCrewId: 2, BlockedWorkItemId: 1 },
+  { Id: 4, DelayId: 3, ProjectId: 1, BlockedCrewId: 2, BlockedWorkItemId: 5 },
+  { Id: 5, DelayId: 3, ProjectId: 1, BlockedCrewId: 4, BlockedWorkItemId: 6 },
+  { Id: 6, DelayId: 4, ProjectId: 1, BlockedCrewId: 3, BlockedWorkItemId: 2 },
+  { Id: 7, DelayId: 5, ProjectId: 1, BlockedCrewId: 2, BlockedWorkItemId: 1 },
+  { Id: 8, DelayId: 6, ProjectId: 1, BlockedCrewId: 2, BlockedWorkItemId: 1 },
+  { Id: 9, DelayId: 7, ProjectId: 1, BlockedCrewId: 3, BlockedWorkItemId: 3 },
+  { Id: 10, DelayId: 8, ProjectId: 2, BlockedCrewId: 5, BlockedWorkItemId: 7 },
+]
+
+/**
+ * Successful handover checks. Each row belongs to one impact and one cycle, so
+ * delay 1's reopened cycle 2 starts with no checks even though cycle 1 closed
+ * with both crews verified. Every verifier is the affected crew's Foreman.
+ */
+export const DELAY_IMPACT_VERIFICATIONS: DelayImpactVerificationRow[] = [
+  {
+    DelayImpactId: 1,
+    DelayId: 1,
+    DelayCycleId: 1,
+    VerifiedByUserId: 1,
+    VerifiedAt: '2026-10-06T19:25:00Z',
+    VerificationNote: 'Lane is clear and the pad is reachable.',
+  },
+  {
+    DelayImpactId: 2,
+    DelayId: 1,
+    DelayCycleId: 1,
+    VerifiedByUserId: 4,
+    VerifiedAt: '2026-10-06T19:32:00Z',
+    VerificationNote: null,
+  },
+  {
+    DelayImpactId: 7,
+    DelayId: 5,
+    DelayCycleId: 6,
+    VerifiedByUserId: 1,
+    VerifiedAt: '2026-10-06T14:05:00Z',
+    VerificationNote: 'Primer is cured and the frame is ready to move.',
+  },
+]
+
+/**
+ * One row per recipient per event, so the same event reaches several people as
+ * separate notices. ReadAt belongs to that one recipient and nobody else, and
+ * a read grants no workflow permission.
+ *
+ * User 1 is a Foreman of Steel Fit-up in project 1 and the Superintendent of
+ * Yard Civil Works in project 2, so their project 2 notice proves the active
+ * project scope. Notice 9009 is the same event as 9002 for a second recipient.
+ */
+export const NOTIFICATIONS: NotificationRow[] = [
+  {
+    Id: 9001,
+    UserId: 1,
+    ProjectId: 1,
+    DelayId: 1,
+    ActivityEventId: 4803,
+    CreatedAt: '2026-10-06T13:55:00Z',
+    ReadAt: '2026-10-06T14:10:00Z',
+  },
+  {
+    Id: 9002,
+    UserId: 1,
+    ProjectId: 1,
+    DelayId: 1,
+    ActivityEventId: 4804,
+    CreatedAt: '2026-10-06T19:20:00Z',
+    ReadAt: '2026-10-06T19:22:00Z',
+  },
+  {
+    Id: 9003,
+    UserId: 1,
+    ProjectId: 1,
+    DelayId: 5,
+    ActivityEventId: 4817,
+    CreatedAt: '2026-10-06T14:10:00Z',
+    ReadAt: '2026-10-06T15:02:00Z',
+  },
+  {
+    Id: 9004,
+    UserId: 1,
+    ProjectId: 1,
+    DelayId: 2,
+    ActivityEventId: 4812,
+    CreatedAt: '2026-10-07T12:48:00Z',
+    ReadAt: '2026-10-07T13:00:00Z',
+  },
+  {
+    Id: 9005,
+    UserId: 1,
+    ProjectId: 1,
+    DelayId: 3,
+    ActivityEventId: 4814,
+    CreatedAt: '2026-10-07T13:05:00Z',
+    ReadAt: null,
+  },
+  {
+    Id: 9006,
+    UserId: 1,
+    ProjectId: 1,
+    DelayId: 4,
+    ActivityEventId: 4815,
+    CreatedAt: '2026-10-07T13:50:00Z',
+    ReadAt: null,
+  },
+  {
+    Id: 9007,
+    UserId: 1,
+    ProjectId: 1,
+    DelayId: 2,
+    ActivityEventId: 4819,
+    CreatedAt: '2026-10-08T12:34:00Z',
+    ReadAt: null,
+  },
+  {
+    Id: 9008,
+    UserId: 1,
+    ProjectId: 1,
+    DelayId: 1,
+    ActivityEventId: 4824,
+    CreatedAt: '2026-10-08T14:02:00Z',
+    ReadAt: null,
+  },
+  {
+    Id: 9009,
+    UserId: 4,
+    ProjectId: 1,
+    DelayId: 1,
+    ActivityEventId: 4804,
+    CreatedAt: '2026-10-06T19:20:00Z',
+    ReadAt: null,
+  },
+  {
+    Id: 9010,
+    UserId: 1,
+    ProjectId: 2,
+    DelayId: 8,
+    ActivityEventId: 4830,
+    CreatedAt: '2026-10-08T13:45:00Z',
+    ReadAt: null,
+  },
 ]
 
 export const DELAY_PHOTOS: DelayPhotoRow[] = [
@@ -622,5 +796,95 @@ export const DELAY_PHOTOS: DelayPhotoRow[] = [
     UpdatedAt: null,
     Latitude: 41.2559,
     Longitude: -95.9331,
+  },
+  {
+    Id: 5,
+    DelayId: 1,
+    DelayCycleId: 1,
+    Purpose: 'InitialReport',
+    CreatedByUserId: 1,
+    UpdatedByUserId: null,
+    OriginalUrl: 'https://placehold.co/400x400/png',
+    ThumbnailUrl: 'https://placehold.co/400x400/png',
+    FileName: 'stored-steel-stack.jpg',
+    CreatedAt: '2026-10-06T13:15:00Z',
+    UpdatedAt: null,
+    Latitude: null,
+    Longitude: null,
+  },
+  {
+    Id: 6,
+    DelayId: 2,
+    DelayCycleId: 3,
+    Purpose: 'InitialReport',
+    CreatedByUserId: 4,
+    UpdatedByUserId: null,
+    OriginalUrl: 'https://placehold.co/400x400/png',
+    ThumbnailUrl: 'https://placehold.co/400x400/png',
+    FileName: 'frame-08-ready.jpg',
+    CreatedAt: '2026-10-07T12:32:00Z',
+    UpdatedAt: null,
+    Latitude: 41.2568,
+    Longitude: -95.9352,
+  },
+  {
+    Id: 7,
+    DelayId: 4,
+    DelayCycleId: 5,
+    Purpose: 'InitialReport',
+    CreatedByUserId: 1,
+    UpdatedByUserId: null,
+    OriginalUrl: 'https://placehold.co/400x400/png',
+    ThumbnailUrl: 'https://placehold.co/400x400/png',
+    FileName: 'bay-3-fit-up.jpg',
+    CreatedAt: '2026-10-07T13:24:00Z',
+    UpdatedAt: null,
+    Latitude: null,
+    Longitude: null,
+  },
+  {
+    Id: 8,
+    DelayId: 6,
+    DelayCycleId: 7,
+    Purpose: 'InitialReport',
+    CreatedByUserId: 3,
+    UpdatedByUserId: null,
+    OriginalUrl: 'https://placehold.co/400x400/png',
+    ThumbnailUrl: 'https://placehold.co/400x400/png',
+    FileName: 'north-laydown.jpg',
+    CreatedAt: '2026-10-06T15:04:00Z',
+    UpdatedAt: null,
+    Latitude: null,
+    Longitude: null,
+  },
+  {
+    Id: 9,
+    DelayId: 7,
+    DelayCycleId: 8,
+    Purpose: 'InitialReport',
+    CreatedByUserId: 3,
+    UpdatedByUserId: null,
+    OriginalUrl: 'https://placehold.co/400x400/png',
+    ThumbnailUrl: 'https://placehold.co/400x400/png',
+    FileName: 'pad-inspection-board.jpg',
+    CreatedAt: '2026-10-08T12:17:00Z',
+    UpdatedAt: null,
+    Latitude: 41.2563,
+    Longitude: -95.9341,
+  },
+  {
+    Id: 10,
+    DelayId: 8,
+    DelayCycleId: 9,
+    Purpose: 'InitialReport',
+    CreatedByUserId: 7,
+    UpdatedByUserId: null,
+    OriginalUrl: 'https://placehold.co/400x400/png',
+    ThumbnailUrl: 'https://placehold.co/400x400/png',
+    FileName: 'yard-gate-locked.jpg',
+    CreatedAt: '2026-10-08T13:47:00Z',
+    UpdatedAt: null,
+    Latitude: null,
+    Longitude: null,
   },
 ]

@@ -1,7 +1,7 @@
 import type { CrewOption, WorkItemOption } from '@/domain/delays'
 import { CheckboxRow } from '@/components/common/Checkbox'
 import { SelectField } from '@/components/common/Select'
-import type { AffectedCrewDraft } from './blockerDraft'
+import type { AffectedCrewDraft } from './delayDraft'
 
 interface AffectedCrewPickerProps {
   crews: CrewOption[]

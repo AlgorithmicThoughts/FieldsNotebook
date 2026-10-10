@@ -2,6 +2,7 @@ import { ArrowRight, ChevronRight, Pin, TriangleAlert } from 'lucide-react'
 import { DELAY_STATUS_DISPLAY, DELAY_TAG_ICON, type DelaySummary } from '@/domain/delays'
 import { Badge } from '@/components/common/Badge'
 import { Icon } from '@/components/common/Icon'
+import './delays.css'
 
 interface DelayRowProps {
   delay: DelaySummary

@@ -2,7 +2,7 @@ import type { CurrentUser, RoleName, ThemePreference, UserProject } from '@/doma
 import { mockRequest } from './client'
 import { ApiError } from './errors'
 import { CREWS, PROJECTS, ROLES, USERS, USER_PROJECTS, USER_ROLES, USER_SETTINGS } from './fixtures'
-import type { RequestOptions, UserRow } from './types'
+import type { RequestOptions, UserRow, UserSettingsRow } from './types'
 
 interface UserSettingsValues {
   themePreference: ThemePreference
@@ -111,14 +111,57 @@ function toCurrentUser(row: UserRow): CurrentUser {
   }
 }
 
+function userRowOf(userId: number): UserRow {
+  const row = USERS.find((candidate) => candidate.Id === userId)
+
+  if (row === undefined) {
+    throw new ApiError(404, 'That user is not available in Field Notebook.')
+  }
+
+  return row
+}
+
 /** The signed-in user, with the role they hold on their active project. */
 export async function getUser(userId: number, options?: RequestOptions): Promise<CurrentUser> {
-  return mockRequest(options, () => {
-    const row = USERS.find((candidate) => candidate.Id === userId)
+  return mockRequest(options, () => toCurrentUser(userRowOf(userId)))
+}
 
-    if (row === undefined) {
-      throw new ApiError(404, 'That user is not available in Field Notebook.')
-    }
+/** The four UserSettings columns a user can change. There is no fifth preference. */
+export interface UserSettingsUpdate {
+  themePreference?: ThemePreference
+  emailEnabled?: boolean
+  smsEnabled?: boolean
+}
+
+/** Writes the fixture row in place, so a later read returns the saved values. */
+function writeSettings(userId: number, update: UserSettingsUpdate): void {
+  const current = settingsOf(userId)
+  const row: UserSettingsRow = {
+    UserId: userId,
+    ThemePreference: update.themePreference ?? current.themePreference,
+    EmailEnabled: update.emailEnabled ?? current.emailEnabled,
+    SmsEnabled: update.smsEnabled ?? current.smsEnabled,
+  }
+  const index = USER_SETTINGS.findIndex((candidate) => candidate.UserId === userId)
+
+  if (index === -1) {
+    USER_SETTINGS.push(row)
+    return
+  }
+
+  USER_SETTINGS[index] = row
+}
+
+/** Saves the changed preferences and returns the refreshed user. */
+export async function updateUserSettings(
+  userId: number,
+  settings: UserSettingsUpdate,
+  options?: RequestOptions,
+): Promise<CurrentUser> {
+  return mockRequest(options, () => {
+    const row = userRowOf(userId)
+
+    writeSettings(userId, settings)
 
     return toCurrentUser(row)
   })

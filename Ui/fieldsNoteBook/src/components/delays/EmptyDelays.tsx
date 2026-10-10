@@ -1,5 +1,6 @@
 import { CircleCheck } from 'lucide-react'
 import { Icon } from '@/components/common/Icon'
+import './delays.css'
 
 interface EmptyDelaysProps {
   title: string
