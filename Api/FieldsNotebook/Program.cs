@@ -32,7 +32,7 @@ builder.Services.AddScoped<INotificationManager, NotificationManager>();
 // Development only: lets the Vite dev server call the API from the browser.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.WithOrigins(allowedOrigins).WithMethods("GET").WithHeaders(DemoIdentity.HeaderName)));
+    policy.WithOrigins(allowedOrigins).WithMethods("GET", "POST").WithHeaders(DemoIdentity.HeaderName)));
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
