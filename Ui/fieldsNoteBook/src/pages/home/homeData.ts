@@ -19,22 +19,6 @@ import type { HomeMetric } from './components/MetricCard'
 
 // Sample values until the API supplies them.
 
-export const CURRENT_PROJECT = {
-  name: 'Omaha Fabrication',
-  code: 'OF-017',
-  place: 'Omaha, Nebraska',
-  timeLabel: 'Project time · Central',
-}
-
-export const CURRENT_USER = {
-  displayName: 'John Davis',
-  initials: 'JD',
-  roleName: 'Foreman',
-  crewName: 'Crew B',
-  canReportDelay: true,
-}
-
-export const TODAY_LABEL = 'Wednesday, 7 October'
 export const LAST_CHECKED_LABEL = '08:42 AM'
 export const HAS_UNREAD_NOTIFICATIONS = true
 
@@ -77,7 +61,7 @@ export const ATTENTION_DELAYS: DelaySummary[] = [
     ownerCrewName: 'Crew B',
     blockedCrewNames: ['Crew A'],
     locationName: 'East access lane',
-    projectName: CURRENT_PROJECT.name,
+    projectName: 'Omaha Fabrication',
     isHighPriority: true,
   },
   {
@@ -89,7 +73,7 @@ export const ATTENTION_DELAYS: DelaySummary[] = [
     ownerCrewName: 'Crew A',
     blockedCrewNames: ['Crew B'],
     locationName: 'Bay 4 · Frame 12',
-    projectName: CURRENT_PROJECT.name,
+    projectName: 'Omaha Fabrication',
     isHighPriority: false,
   },
   {
@@ -101,7 +85,7 @@ export const ATTENTION_DELAYS: DelaySummary[] = [
     ownerCrewName: 'Crew A',
     blockedCrewNames: ['Crew B', 'Crew C'],
     locationName: 'Bay 2 · Overhead crane',
-    projectName: CURRENT_PROJECT.name,
+    projectName: 'Omaha Fabrication',
     isHighPriority: false,
   },
   {
@@ -113,7 +97,7 @@ export const ATTENTION_DELAYS: DelaySummary[] = [
     ownerCrewName: 'Crew A',
     blockedCrewNames: ['Crew B'],
     locationName: 'Bay 3 · Frame 08',
-    projectName: CURRENT_PROJECT.name,
+    projectName: 'Omaha Fabrication',
     isHighPriority: false,
   },
 ]

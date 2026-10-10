@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Accessors.Users;
 using Database;
+using FieldsNotebook.Controllers;
 using Managers.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,11 @@ builder.Services.AddDbContext<FieldNotebookContext>(options => options.UseSqlSer
 
 builder.Services.AddScoped<IUserAccessor, UserAccessor>();
 builder.Services.AddScoped<IUserManager, UserManager>();
+
+// Development only: lets the Vite dev server call the API from the browser.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+    policy.WithOrigins(allowedOrigins).WithMethods("GET").WithHeaders(DemoIdentity.HeaderName)));
 
 builder.Services.AddProblemDetails();
 // Strict numbers keep integer parameters typed as "integer" in OpenAPI; Swagger UI cannot validate ["integer","string"].
@@ -40,6 +46,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors();
 
 app.UseAuthorization();
 

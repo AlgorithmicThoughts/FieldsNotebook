@@ -182,3 +182,11 @@
   max-width: 1320px;
   padding: 30px 32px;
 }
+
+.startup-status {
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  text-align: center;
+  color: var(--text);
+}

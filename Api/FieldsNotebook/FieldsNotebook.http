@@ -9,3 +9,9 @@ GET {{FieldsNotebook_HostAddress}}/api/users/1
 Accept: application/json
 
 ###
+
+GET {{FieldsNotebook_HostAddress}}/api/me
+Accept: application/json
+X-Demo-User-Id: 3
+
+###
