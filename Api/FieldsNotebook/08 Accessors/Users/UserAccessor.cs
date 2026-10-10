@@ -37,7 +37,7 @@ namespace Accessors.Users
             var crews = await context.Crew
                 .Where(c => c.IsActive && (c.ForemanLeadId == userId || c.SuperintendentUserId == userId))
                 .OrderBy(c => c.Name)
-                .Select(c => new CrewLeadRecord(c.ProjectId, c.Name, c.ForemanLeadId == userId))
+                .Select(c => new CrewLeadRecord(c.Id, c.ProjectId, c.Name, c.ForemanLeadId == userId))
                 .ToListAsync(cancellationToken);
 
             return new CurrentUserRecord(userId, displayName, projects, crews);

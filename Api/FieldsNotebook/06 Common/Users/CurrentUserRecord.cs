@@ -10,5 +10,5 @@ namespace Common.Users
     public sealed record UserProjectRecord(int ProjectId, string Name, string Code, string DistrictName, string RoleName);
 
     /// <summary>An active crew the user leads as its Foreman or directs as its Superintendent.</summary>
-    public sealed record CrewLeadRecord(int ProjectId, string Name, bool IsForemanLead);
+    public sealed record CrewLeadRecord(int CrewId, int ProjectId, string Name, bool IsForemanLead);
 }

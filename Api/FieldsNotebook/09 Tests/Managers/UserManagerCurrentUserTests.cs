@@ -15,7 +15,7 @@ namespace Tests.Managers
         {
             SetUpUser(
                 [new UserProjectRecord(1, "Omaha Fabrication", "OMA-FAB", "Northern Plains", RoleNames.Foreman)],
-                [new CrewLeadRecord(1, "Welding and Erection", IsForemanLead: true)]);
+                [new CrewLeadRecord(3, 1, "Welding and Erection", IsForemanLead: true)]);
 
             var user = await new UserManager(_userAccessor.Object).GetCurrentUserAsync(3, CancellationToken.None);
 
@@ -29,9 +29,9 @@ namespace Tests.Managers
         {
             SetUpUser(
                 [new UserProjectRecord(1, "Omaha Fabrication", "OMA-FAB", "Northern Plains", RoleNames.Superintendent)],
-                [new CrewLeadRecord(1, "Coatings", IsForemanLead: false),
-                 new CrewLeadRecord(1, "Welding and Erection", IsForemanLead: false),
-                 new CrewLeadRecord(3, "Other project crew", IsForemanLead: false)]);
+                [new CrewLeadRecord(4, 1, "Coatings", IsForemanLead: false),
+                 new CrewLeadRecord(3, 1, "Welding and Erection", IsForemanLead: false),
+                 new CrewLeadRecord(9, 3, "Other project crew", IsForemanLead: false)]);
 
             var user = await new UserManager(_userAccessor.Object).GetCurrentUserAsync(6, CancellationToken.None);
 

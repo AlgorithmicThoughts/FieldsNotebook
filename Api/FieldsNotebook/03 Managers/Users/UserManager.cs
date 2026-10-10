@@ -1,8 +1,8 @@
 using Accessors.Users;
-using Common.Roles;
 using Common.Users;
 using DataContract.Me;
 using DataContract.Users;
+using Engines.Crews;
 
 namespace Managers.Users
 {
@@ -28,12 +28,10 @@ namespace Managers.Users
                 : new CurrentUserResponse(user.Id, user.DisplayName, user.Projects.Select(p => ToProjectResponse(p, user.Crews)).ToList());
         }
 
-        // A Foreman's crews are the ones they lead; a Superintendent's are the ones they direct.
         private static CurrentUserProjectResponse ToProjectResponse(UserProjectRecord project, IReadOnlyList<CrewLeadRecord> crews)
         {
-            var isForeman = project.RoleName == RoleNames.Foreman;
-            var crewNames = crews
-                .Where(c => c.ProjectId == project.ProjectId && c.IsForemanLead == isForeman)
+            var crewNames = CrewCoverageEngine
+                .GetCoveredCrews(project.RoleName, crews.Where(c => c.ProjectId == project.ProjectId))
                 .Select(c => c.Name)
                 .ToList();
 
@@ -44,7 +42,7 @@ namespace Managers.Users
                 project.DistrictName,
                 project.RoleName,
                 crewNames,
-                CanReportDelay: isForeman && crewNames.Count > 0);
+                CrewCoverageEngine.CanReportDelay(project.RoleName, crewNames.Count));
         }
     }
 }
