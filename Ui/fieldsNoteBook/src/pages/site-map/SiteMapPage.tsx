@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getDelaysByProjectId } from '@/api/delays'
+import { getProjectTracking, type ProjectTracking } from '@/api/tracking'
 import { isAbortError, isApiError } from '@/api/errors'
-import { getLatestDelayPhotosByProjectId, getSiteMapByProjectId } from '@/api/siteMaps'
 import type { DelayPhotoPreview } from '@/api/siteMaps'
 import { Button } from '@/components/common/Button'
 import { Card } from '@/components/common/Card'
@@ -31,6 +30,14 @@ type SiteMapState =
 
 const GENERIC_ERROR = 'Field Notebook could not load the site map for this project.'
 
+function latestPhotos(tracking: ProjectTracking): DelayPhotoPreview[] {
+  return tracking.delays.flatMap((delay) => {
+    const photo = delay.photos.flatMap((group) => group.photos)
+      .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt)).at(0)
+    return photo === undefined ? [] : [{ delayId: delay.summary.id, ...photo }]
+  })
+}
+
 function SiteMapSkeleton() {
   return (
     <div className="map-layout" aria-busy="true">
@@ -54,18 +61,17 @@ export function SiteMapPage() {
     const controller = new AbortController()
     const { signal } = controller
 
-    Promise.all([
-      getSiteMapByProjectId(projectId, { signal }),
-      getDelaysByProjectId(projectId, { signal }),
-      getLatestDelayPhotosByProjectId(projectId, { signal }),
-    ])
-      .then(([siteMap, delays, photos]) => {
+    getProjectTracking(projectId, { signal })
+      .then((tracking) => {
         if (signal.aborted) {
           return
         }
 
         setSelectedDelayNumber(null)
         setIsSummaryOpen(false)
+        const delays = tracking.delays.map((row) => row.summary)
+        const photos = latestPhotos(tracking)
+        const siteMap = tracking.delays.find((row) => row.siteMap !== null)?.siteMap ?? null
         setState({ key: requestKey, status: 'ready', data: { siteMap, delays, photos } })
       })
       .catch((error: unknown) => {

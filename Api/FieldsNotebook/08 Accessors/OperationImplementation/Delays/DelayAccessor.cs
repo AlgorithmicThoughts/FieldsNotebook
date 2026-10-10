@@ -1,10 +1,13 @@
 using Common.Delays;
 using Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Utilities;
 
 namespace Accessors.Delays
 {
-    public class DelayAccessor(FieldNotebookContext context) : IDelayAccessor
+    public partial class DelayAccessor(FieldNotebookContext context, UtilityFactory Utilities,
+        ILogger<DelayAccessor> logger) : IDelayAccessor
     {
         public async Task<ActiveDelaySet> GetActiveDelaysForCrewsAsync(
             int projectId, IReadOnlyCollection<int> crewIds, CancellationToken cancellationToken)

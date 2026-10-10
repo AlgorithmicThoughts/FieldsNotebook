@@ -1,11 +1,11 @@
-import { useRef, type ChangeEvent } from 'react'
-import { Camera, Images, MapPin, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { Images, MapPin, Trash2 } from 'lucide-react'
 import { readPhotoGps } from '@/lib/exifGps'
 import { Button, IconButton } from '@/components/common/Button'
 import { Icon } from '@/components/common/Icon'
 import { MAX_PHOTOS, type PhotoDraft } from './delayDraft'
 
-/** The approved upload formats. A phone camera supplies JPG or HEIC. */
+/** The approved upload formats. */
 const ACCEPTED_TYPES = 'image/jpeg,image/png,image/heic,image/heif'
 
 async function toPhotoDraft(file: File): Promise<PhotoDraft> {
@@ -32,20 +32,46 @@ interface PhotoPickerProps {
   photos: PhotoDraft[]
   onChange: (photos: PhotoDraft[]) => void
   disabled?: boolean
+  onReadingChange: (reading: boolean) => void
 }
 
 /** One to five photos on the initial report, with EXIF GPS when a file has it. */
-export function PhotoPicker({ photos, onChange, disabled }: PhotoPickerProps) {
-  const cameraInput = useRef<HTMLInputElement>(null)
+export function PhotoPicker({ photos, onChange, disabled, onReadingChange }: PhotoPickerProps) {
   const libraryInput = useRef<HTMLInputElement>(null)
+  const alive = useRef(false)
+  const reading = useRef(false)
+  const [isReading, setIsReading] = useState(false)
+
+  useEffect(() => {
+    alive.current = true
+    return () => { alive.current = false }
+  }, [])
+
+  function finishRead(added: PhotoDraft[]) {
+    if (!alive.current) {
+      added.forEach((photo) => URL.revokeObjectURL(photo.previewUrl))
+      return
+    }
+    onChange([...photos, ...added])
+    setIsReading(false)
+    onReadingChange(false)
+  }
 
   async function addFiles(event: ChangeEvent<HTMLInputElement>) {
+    if (reading.current || disabled) return
+    reading.current = true
+    setIsReading(true)
+    onReadingChange(true)
     const chosen = Array.from(event.target.files ?? []).slice(0, MAX_PHOTOS - photos.length)
 
     // Clearing lets the same file be chosen again after a removal.
     event.target.value = ''
 
-    onChange([...photos, ...(await Promise.all(chosen.map(toPhotoDraft)))])
+    try {
+      finishRead(await Promise.all(chosen.map(toPhotoDraft)))
+    } finally {
+      reading.current = false
+    }
   }
 
   function removePhoto(photo: PhotoDraft) {
@@ -54,6 +80,8 @@ export function PhotoPicker({ photos, onChange, disabled }: PhotoPickerProps) {
   }
 
   const isFull = photos.length >= MAX_PHOTOS
+  const interactionDisabled = disabled || isReading
+  const uploadDisabled = interactionDisabled || isFull
 
   return (
     <div className="grid gap-3">
@@ -74,7 +102,7 @@ export function PhotoPicker({ photos, onChange, disabled }: PhotoPickerProps) {
                 icon={Trash2}
                 className="absolute top-1 right-1 bg-[var(--card)]"
                 onClick={() => removePhoto(photo)}
-                disabled={disabled}
+                disabled={interactionDisabled}
               />
               <div className="grid gap-1 px-2 py-2 text-[12px]">
                 <strong className="truncate font-[650]">{photo.file.name}</strong>
@@ -91,15 +119,9 @@ export function PhotoPicker({ photos, onChange, disabled }: PhotoPickerProps) {
       <div className="rounded-[12px] border border-dashed border-input bg-[var(--bg)] p-[18px] text-center">
         <div className="flex flex-wrap justify-center gap-[10px]">
           <Button
-            label="Take photo"
-            icon={Camera}
-            disabled={disabled || isFull}
-            onClick={() => cameraInput.current?.click()}
-          />
-          <Button
-            label="Add photos"
+            label="Add photo"
             icon={Images}
-            disabled={disabled || isFull}
+            disabled={uploadDisabled}
             onClick={() => libraryInput.current?.click()}
           />
         </div>
@@ -108,14 +130,6 @@ export function PhotoPicker({ photos, onChange, disabled }: PhotoPickerProps) {
         </p>
       </div>
 
-      <input
-        ref={cameraInput}
-        type="file"
-        accept={ACCEPTED_TYPES}
-        capture="environment"
-        hidden
-        onChange={addFiles}
-      />
       <input
         ref={libraryInput}
         type="file"

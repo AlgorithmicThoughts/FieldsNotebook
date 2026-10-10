@@ -100,11 +100,11 @@ async function problemTitle(response: Response): Promise<string> {
  * same AbortError the mock raises; any other failure becomes an ApiError whose
  * message a page can show as it is.
  */
-async function apiRequest<T>(method: 'GET' | 'POST', path: string, options?: RequestOptions): Promise<T> {
+async function apiRequest<T>(method: 'GET' | 'POST', path: string, options?: RequestOptions, body?: FormData): Promise<T> {
   let response: Response
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { method, headers: requestHeaders(), signal: options?.signal })
+    response = await fetch(`${API_BASE_URL}${path}`, { method, headers: requestHeaders(), signal: options?.signal, body })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error
@@ -127,4 +127,8 @@ export function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
 /** A POST with no body; the route names the action. */
 export function apiPost<T>(path: string, options?: RequestOptions): Promise<T> {
   return apiRequest<T>('POST', path, options)
+}
+
+export function apiPostForm<T>(path: string, body: FormData, options?: RequestOptions): Promise<T> {
+  return apiRequest<T>('POST', path, options, body)
 }

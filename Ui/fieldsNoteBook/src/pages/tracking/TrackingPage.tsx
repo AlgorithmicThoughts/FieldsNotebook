@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { getProjectTracking } from "@/api/tracking";
 import { isAbortError, isApiError } from "@/api/errors";
 import { Button } from "@/components/common/Button";
+import { AddDelayModal } from "@/components/delays/AddDelayModal";
 import { PillTabs } from "@/components/common/Tabs";
 import { canReportDelay } from "@/domain/permissions";
 import { useWorkspace } from "@/routes/useWorkspace";
@@ -37,6 +38,7 @@ export function TrackingPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<TrackingFilter>("all");
   const [reloadCount, setReloadCount] = useState(0);
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const [state, setState] = useState<TrackingState>({ key: null });
 
   // Scope never widens past the assigned projects. The memo holds one array
@@ -103,8 +105,7 @@ export function TrackingPage() {
             label="Report delay"
             variant="primary"
             icon={Plus}
-            disabled
-            title="Reporting delays is not available yet."
+            onClick={() => setIsReportOpen(true)}
           />
         ) : null}
       </div>
@@ -139,6 +140,13 @@ export function TrackingPage() {
         summary={openedDelay}
         user={user}
         onClose={() => setSearchParams({}, { replace: true })}
+      />
+      <AddDelayModal
+        open={isReportOpen}
+        onOpenChange={setIsReportOpen}
+        user={user}
+        projectId={user.activeProjectId}
+        onCreated={() => setReloadCount((count) => count + 1)}
       />
     </>
   );
