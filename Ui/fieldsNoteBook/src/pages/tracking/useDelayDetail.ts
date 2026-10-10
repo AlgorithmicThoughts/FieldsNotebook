@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getDelayById } from '@/api/delays'
+import { getTrackingDetail } from '@/api/tracking'
 import { isAbortError, isApiError } from '@/api/errors'
-import { getSiteMapByProjectId } from '@/api/siteMaps'
 import type { DelayDetail, SiteMapOption } from '@/domain/delays'
 
 const GENERIC_ERROR = 'Field Notebook could not load this delay.'
@@ -39,13 +38,10 @@ export function useDelayDetail(
     const controller = new AbortController()
     const { signal } = controller
 
-    Promise.all([
-      getDelayById(delayId, { signal }),
-      getSiteMapByProjectId(projectId, { signal }),
-    ])
-      .then(([delay, siteMap]) => {
+    getTrackingDetail(delayId, projectId, { signal })
+      .then((data) => {
         if (!signal.aborted) {
-          setState({ key: requestKey, status: 'ready', data: { delay, siteMap } })
+          setState({ key: requestKey, status: 'ready', data })
         }
       })
       .catch((error: unknown) => {

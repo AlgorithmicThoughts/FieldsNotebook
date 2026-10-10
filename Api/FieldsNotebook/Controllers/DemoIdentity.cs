@@ -7,5 +7,9 @@ namespace FieldsNotebook.Controllers
     public static class DemoIdentity
     {
         public const string HeaderName = "X-Demo-User-Id";
+
+        /// <summary>Reads the request identity; the Manager validates it and project access.</summary>
+        public static int GetUserId(HttpContext context) =>
+            int.TryParse(context.Request.Headers[HeaderName].ToString(), out var userId) ? userId : 0;
     }
 }
