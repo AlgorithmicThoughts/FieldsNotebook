@@ -2,7 +2,7 @@ import { CalendarClock, CirclePause, Link2, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import { Icon } from '@/components/common/Icon'
 import { formatProjectDayLabel, formatProjectTime } from '@/lib/projectTime'
-import type { BlockedWorkRow as BlockedWork, CompletionEstimate } from '../upcomingView'
+import type { BlockedWorkRow as BlockedWork, CompletionEstimate } from '@/domain/upcoming'
 
 function at(value: string): string {
   return `${formatProjectTime(value)}, ${formatProjectDayLabel(value)}`
