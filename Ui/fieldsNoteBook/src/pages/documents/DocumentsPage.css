@@ -1,0 +1,56 @@
+.document-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* The sample notice is part of the approved design, not decoration. */
+.document-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--soft);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.document-notice > .icon {
+  margin-top: 1px;
+  color: var(--accent);
+}
+
+.document-notice p {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.document-hint {
+  margin-top: 22px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* One line of sample preview content inside the document modal. */
+.sample-doc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.sample-doc-row:first-child {
+  border-top: 0;
+}
+
+.sample-doc-row .sample-doc-note {
+  font-size: 11px;
+  color: var(--muted);
+}

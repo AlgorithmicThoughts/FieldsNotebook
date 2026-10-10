@@ -74,10 +74,57 @@
   background: var(--urgent);
 }
 
+.profile-menu {
+  position: relative;
+}
+
 .profile {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 44px;
+  padding: 4px 10px 4px 4px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  text-align: left;
+}
+
+.profile:hover {
+  background: var(--bg);
+}
+
+.profile-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  min-width: 208px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: 0 14px 34px var(--shadow);
+}
+
+.profile-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 650;
+  text-align: left;
+}
+
+.profile-action:hover {
+  background: var(--bg);
 }
 
 .avatar {

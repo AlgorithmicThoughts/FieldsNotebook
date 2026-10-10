@@ -1,0 +1,157 @@
+.report-grid {
+  display: grid;
+  grid-template-columns: 310px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.report-scope {
+  display: grid;
+  gap: 20px;
+  padding: 22px;
+}
+
+.report-scope-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.report-projects {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 0 14px;
+}
+
+.report-projects > * + * {
+  border-top: 1px solid var(--border);
+}
+
+.report-summary {
+  display: grid;
+  gap: 16px;
+  padding: 20px 22px;
+  border-top: 1px solid var(--border);
+}
+
+.report-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.report-tile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 17px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+}
+
+.report-tile-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.report-tile-icon.resolved {
+  color: var(--resolved);
+  background: var(--resolved-bg);
+}
+
+.report-tile strong {
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.report-tile .report-tile-label {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.report-tags {
+  display: grid;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.report-tag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.report-tag-row .report-tag-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.report-tag-bar {
+  display: block;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: 6px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.report-tag-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--accent);
+}
+
+/*
+ * A reason with no delays in scope. The dashed empty track and the lighter name
+ * carry the difference alongside the count, so colour is never the only cue.
+ */
+.report-tag[data-empty='true'] .report-tag-row strong {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.report-tag[data-empty='true'] .report-tag-count {
+  color: var(--muted);
+}
+
+.report-tag[data-empty='true'] .report-tag-bar {
+  background: transparent;
+  border: 1px dashed var(--border);
+}
+
+.report-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 48px 22px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.report-empty strong {
+  color: var(--text);
+}
+
+.report-empty .icon {
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+
+.report-empty-action {
+  margin-top: 10px;
+}
