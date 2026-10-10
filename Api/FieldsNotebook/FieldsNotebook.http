@@ -1,0 +1,6 @@
+@FieldsNotebook_HostAddress = http://localhost:5240
+
+GET {{FieldsNotebook_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,11 @@
+<Solution>
+  <Project Path="FieldsNotebook.csproj" />
+  <Folder Name="/02 Data Contract/" />
+  <Project Path="02 Data Contract/Data Contract.csproj" />
+  <Project Path="03 Managers/Managers.csproj" />
+  <Project Path="04 Engines/Engines.csproj" />
+  <Project Path="05 Utilities/Utilities.csproj" />
+  <Project Path="06 Common/Common.csproj" />
+  <Project Path="07 Database/Database.csproj" />
+  <Project Path="08 Accessors/Accessors.csproj" />
+</Solution>
