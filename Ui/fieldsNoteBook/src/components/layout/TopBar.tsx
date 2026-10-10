@@ -1,7 +1,9 @@
-import { ArrowRight, Bell, Building2, ChevronDown, Moon, Sun } from 'lucide-react'
+import { Bell, Building2, ChevronDown, Moon, Sun } from 'lucide-react'
 import { IconButton } from '@/components/common/Button'
 import { Icon } from '@/components/common/Icon'
 import type { ResolvedTheme } from '@/hooks/useResolvedTheme'
+import { Brand } from './Brand'
+import { ProfileMenu } from './ProfileMenu'
 import './layout.css'
 
 interface TopBarProps {
@@ -18,6 +20,7 @@ interface TopBarProps {
   onThemeToggle?: () => void
   onProjectChange?: () => void
   onNotificationsOpen?: () => void
+  onSignOut: () => void
 }
 
 export function TopBar({
@@ -33,15 +36,11 @@ export function TopBar({
   onThemeToggle,
   onProjectChange,
   onNotificationsOpen,
+  onSignOut,
 }: TopBarProps) {
   return (
     <header className="topbar">
-      <div className="brand">
-        <span className="brand-mark">
-          <Icon icon={ArrowRight} size={23} />
-        </span>
-        Field Notebook
-      </div>
+      <Brand />
 
       <button
         type="button"
@@ -74,13 +73,13 @@ export function TopBar({
         className={hasUnreadNotifications ? 'notifications-unread' : undefined}
       />
 
-      <div className="profile">
-        <span className="avatar">{userInitials}</span>
-        <span className="profile-copy">
-          <strong>{userDisplayName}</strong>
-          {userCrewName} · {userRoleName}
-        </span>
-      </div>
+      <ProfileMenu
+        userDisplayName={userDisplayName}
+        userInitials={userInitials}
+        userRoleName={userRoleName}
+        userCrewName={userCrewName}
+        onSignOut={onSignOut}
+      />
     </header>
   )
 }

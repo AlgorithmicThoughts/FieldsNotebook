@@ -1,0 +1,84 @@
+/*
+ * Structure for the delay list row and its empty state. Both are shared by
+ * Home and Tracking, so the rules travel with the components rather than with
+ * either page.
+ */
+
+.delay-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 20px 22px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.delay-row:hover {
+  background: var(--bg);
+}
+
+.delay-row > .grow > strong {
+  display: block;
+  margin: 7px 0;
+  font-size: 14px;
+}
+
+.delay-row p {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.delay-symbol {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.delay-symbol.urgent {
+  background: var(--urgent-bg);
+  color: var(--urgent);
+}
+
+.delay-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.delay-project {
+  color: var(--muted);
+}
+
+.row-end {
+  display: grid;
+  justify-items: end;
+  gap: 16px;
+  max-width: 140px;
+  padding-top: 2px;
+  color: var(--muted);
+}
+
+.empty {
+  padding: 48px 22px;
+  text-align: center;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+.empty strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.empty .icon {
+  margin-bottom: 12px;
+}

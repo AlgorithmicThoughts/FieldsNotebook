@@ -1,0 +1,11 @@
+.workspace-message {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+  max-width: 640px;
+  padding: 48px 32px;
+}
+
+.workspace-message p {
+  color: var(--muted);
+}

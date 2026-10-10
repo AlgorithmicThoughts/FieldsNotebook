@@ -3,10 +3,10 @@ import type { DelaySummary } from '@/domain/delays'
 import { Badge } from '@/components/common/Badge'
 import { Button } from '@/components/common/Button'
 import { Card, CardHeading } from '@/components/common/Card'
+import { DelayRow } from '@/components/delays/DelayRow'
+import { EmptyDelays } from '@/components/delays/EmptyDelays'
 import { ActivityTimeline, type ActivityEntry } from './components/ActivityTimeline'
 import { AdvanceNoticeHero, type AdvanceNotice } from './components/AdvanceNoticeHero'
-import { DelayRow } from './components/DelayRow'
-import { EmptyDelays } from './components/EmptyDelays'
 import { HandoverTip } from './components/HandoverTip'
 import { MetricCard, type HomeMetric } from './components/MetricCard'
 import { RefreshNote } from './components/RefreshNote'
@@ -59,7 +59,7 @@ export function HomePage({
           </p>
         </div>
         {canReportDelay ? (
-          <Button label="Report blocker" variant="primary" icon={Plus} onClick={onReportDelay} />
+          <Button label="Report delay" variant="primary" icon={Plus} onClick={onReportDelay} />
         ) : null}
       </div>
 
