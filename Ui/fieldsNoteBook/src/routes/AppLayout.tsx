@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { getProjectById } from '@/api/projects'
 import { isAbortError, isApiError } from '@/api/errors'
 import { getUser } from '@/api/users'
 import { Button } from '@/components/common/Button'
@@ -9,7 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { ProjectSummary } from '@/domain/projects'
-import type { CurrentUser } from '@/domain/users'
+import { crewLabel, type CurrentUser } from '@/domain/users'
 import { PROJECT_TIME_LABEL } from '@/lib/projectTime'
 import { AppStateProvider } from '@/state/AppStateProvider'
 import { useAppState } from '@/state/appState'
@@ -23,6 +22,16 @@ type SessionState =
   | { attempt: null }
   | { attempt: number; status: 'error'; message: string }
   | { attempt: number; status: 'ready'; user: CurrentUser; project: ProjectSummary }
+
+function activeProjectOf(user: CurrentUser): ProjectSummary {
+  const project = user.projects.find((candidate) => candidate.id === user.activeProjectId)
+
+  if (project === undefined) {
+    throw new Error('The active project is missing from the signed-in user.')
+  }
+
+  return project
+}
 
 function messageOf(error: unknown): string {
   return isApiError(error) ? error.message : 'Field Notebook could not load your workspace.'
@@ -47,11 +56,11 @@ function WorkspaceLoader({ userId }: { userId: number }) {
   useEffect(() => {
     const controller = new AbortController()
 
+    // One request: /api/me already carries each project's code and district.
     const load = async () => {
       const user = await getUser(userId, { signal: controller.signal })
-      const project = await getProjectById(user.activeProjectId, { signal: controller.signal })
 
-      return { user, project }
+      return { user, project: activeProjectOf(user) }
     }
 
     load()
@@ -133,7 +142,7 @@ function WorkspaceShell({ user, project }: WorkspaceProps) {
           userDisplayName={user.displayName}
           userInitials={user.initials}
           userRoleName={user.roleName}
-          userCrewName={user.crewName}
+          userCrewName={crewLabel(user)}
           theme={theme}
           hasUnreadNotifications={unreadNoticeCount > 0}
           onThemeToggle={() => selectThemePreference(theme === 'dark' ? 'Light' : 'Dark')}
@@ -143,7 +152,7 @@ function WorkspaceShell({ user, project }: WorkspaceProps) {
       sidebar={
         <Sidebar
           items={navItemsWithUnread(unreadNoticeCount)}
-          crewName={user.crewName}
+          crewName={crewLabel(user)}
           roleName={user.roleName}
           projectTimeLabel={PROJECT_TIME_LABEL}
         />

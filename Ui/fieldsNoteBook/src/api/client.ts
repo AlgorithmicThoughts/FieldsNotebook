@@ -1,3 +1,4 @@
+import { readAuthSession } from '@/state/authCookie'
 import { ApiError } from './errors'
 import type { RequestOptions } from './types'
 
@@ -61,4 +62,60 @@ export async function mockRequest<T>(
   await waitForMockLatency(options?.signal)
   failTransiently()
   return structuredClone(produce())
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+
+/**
+ * Local-development identity until Entra ID sign-in exists. The API reads the
+ * user from this header and still checks project, role, and crew itself.
+ */
+const DEMO_USER_HEADER = 'X-Demo-User-Id'
+
+const UNREACHABLE = 'The request did not reach Field Notebook. Try again.'
+
+function requestHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  const session = readAuthSession()
+
+  if (session !== null) {
+    headers[DEMO_USER_HEADER] = String(session.user.userId)
+  }
+
+  return headers
+}
+
+async function problemTitle(response: Response): Promise<string> {
+  try {
+    const problem = (await response.json()) as { title?: unknown }
+
+    return typeof problem.title === 'string' ? problem.title : UNREACHABLE
+  } catch {
+    return UNREACHABLE
+  }
+}
+
+/**
+ * One GET against the Field Notebook API. Cancellation surfaces as the same
+ * AbortError the mock raises; any other failure becomes an ApiError whose
+ * message a page can show as it is.
+ */
+export async function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
+  let response: Response
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { headers: requestHeaders(), signal: options?.signal })
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error
+    }
+
+    throw new ApiError(503, UNREACHABLE)
+  }
+
+  if (!response.ok) {
+    throw new ApiError(response.status, await problemTitle(response))
+  }
+
+  return (await response.json()) as T
 }

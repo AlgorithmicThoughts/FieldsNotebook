@@ -1,6 +1,6 @@
 import { describeActivityEvent } from '@/domain/activity'
 import type { NotificationSummary } from '@/domain/notifications'
-import { mockRequest } from './client'
+import { apiGet, mockRequest } from './client'
 import { ApiError } from './errors'
 import { DELAYS, NOTIFICATIONS, PROJECTS } from './fixtures'
 import { ACTIVITY_EVENTS } from './fixtures/activityEvents'
@@ -69,4 +69,17 @@ export async function markNotificationRead(
 
     return toSummary(row)
   })
+}
+
+/**
+ * GET /api/projects/{projectId}/notifications/unread-count — the signed-in
+ * user's unopened notices in the project. Reading the count marks nothing read.
+ */
+export async function getUnreadNotificationCount(projectId: number, options?: RequestOptions): Promise<number> {
+  const { unreadCount } = await apiGet<{ unreadCount: number }>(
+    `/api/projects/${projectId}/notifications/unread-count`,
+    options,
+  )
+
+  return unreadCount
 }

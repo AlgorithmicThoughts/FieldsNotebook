@@ -1,5 +1,5 @@
 import type { CreateDelayRequest, DelayLocationSource, DelayPin } from '@/domain/delays'
-import type { CurrentUser } from '@/domain/users'
+import { coversCrewId, type CurrentUser } from '@/domain/users'
 import { canReportDelay } from '@/domain/permissions'
 
 export const MIN_PHOTOS = 1
@@ -142,7 +142,11 @@ export function reporterError(draft: DelayDraft, user: CurrentUser): string | nu
 
   const crewIds = draft.affectedCrews.map((crew) => crew.crewId)
 
-  if (draft.ownerCrewId !== null && draft.ownerCrewId !== user.crewId && !crewIds.includes(user.crewId)) {
+  const namesOwnCrew =
+    (draft.ownerCrewId !== null && coversCrewId(user, draft.ownerCrewId)) ||
+    crewIds.some((crewId) => coversCrewId(user, crewId))
+
+  if (draft.ownerCrewId !== null && !namesOwnCrew) {
     return 'Name your own crew as the responsible crew or as an affected crew.'
   }
 

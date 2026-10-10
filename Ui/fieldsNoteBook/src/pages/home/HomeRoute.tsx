@@ -1,28 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getRecentActivityByProjectId } from '@/api/activity'
-import { getDelaysByProjectId } from '@/api/delays'
+import { getProjectHome, type ProjectHome } from '@/api/home'
 import { isAbortError, isApiError } from '@/api/errors'
 import { Button } from '@/components/common/Button'
 import { Card } from '@/components/common/Card'
 import { AddDelayModal } from '@/components/delays/AddDelayModal'
-import type { ActivityEntry } from '@/domain/activity'
 import type { DelaySummary } from '@/domain/delays'
 import { canReportDelay } from '@/domain/permissions'
+import { crewLabel } from '@/domain/users'
 import { formatProjectDate, formatProjectTime } from '@/lib/projectTime'
 import { useWorkspace } from '@/routes/useWorkspace'
 import { HomePage } from './HomePage'
 import { HomeSkeleton } from './components/HomeSkeleton'
-import {
-  ACTIVITY_LIMIT,
-  toAdvanceNotice,
-  toAttentionDelays,
-  toHomeMetrics,
-} from './homeView'
+import { toActivityBadgeLabel, toAdvanceNotice, toHomeMetrics } from './homeView'
 
 interface HomeData {
-  delays: DelaySummary[]
-  activity: ActivityEntry[]
+  home: ProjectHome
   fetchedAt: Date
 }
 
@@ -50,11 +43,20 @@ export function HomeRoute() {
   const [isReportOpen, setIsReportOpen] = useState(false)
   const requestKey = `${projectId}:${reloadCount}`
 
-  /** A delay the Foreman just raised joins the list without another request. */
+  /**
+   * A delay the Foreman just raised joins the list without another request.
+   * The counts refresh on the next visit, when the API includes it.
+   */
   function addDelay(delay: DelaySummary) {
     setState((current) =>
       current.key !== null && current.status === 'ready'
-        ? { ...current, data: { ...current.data, delays: [delay, ...current.data.delays] } }
+        ? {
+            ...current,
+            data: {
+              ...current.data,
+              home: { ...current.data.home, attentionDelays: [delay, ...current.data.home.attentionDelays] },
+            },
+          }
         : current,
     )
   }
@@ -63,11 +65,8 @@ export function HomeRoute() {
     const controller = new AbortController()
     const { signal } = controller
 
-    Promise.all([
-      getDelaysByProjectId(projectId, { signal }),
-      getRecentActivityByProjectId(projectId, ACTIVITY_LIMIT, { signal }),
-    ])
-      .then(([delays, activity]) => {
+    getProjectHome(projectId, { signal })
+      .then((home) => {
         if (signal.aborted) {
           return
         }
@@ -75,7 +74,7 @@ export function HomeRoute() {
         setState({
           key: requestKey,
           status: 'ready',
-          data: { delays, activity, fetchedAt: new Date() },
+          data: { home, fetchedAt: new Date() },
         })
       })
       .catch((error: unknown) => {
@@ -113,21 +112,22 @@ export function HomeRoute() {
     )
   }
 
-  const { delays, activity, fetchedAt } = state.data
+  const { home, fetchedAt } = state.data
   const projectName = user.projects.find((project) => project.id === projectId)?.name ?? ''
 
   return (
     <>
       <HomePage
         projectName={projectName}
-        crewName={user.crewName}
+        crewName={crewLabel(user)}
         roleName={user.roleName}
         todayLabel={formatProjectDate(fetchedAt)}
         canReportDelay={canReportDelay(user)}
-        advanceNotice={toAdvanceNotice(delays, user)}
-        metrics={toHomeMetrics(delays, user)}
-        attentionDelays={toAttentionDelays(delays, user)}
-        activityEntries={activity}
+        advanceNotice={toAdvanceNotice(home.advanceNotice, fetchedAt)}
+        metrics={toHomeMetrics(home.metrics)}
+        attentionDelays={home.attentionDelays}
+        activityEntries={home.recentActivity}
+        activityBadgeLabel={toActivityBadgeLabel(home.recentActivity, fetchedAt)}
         lastCheckedLabel={formatProjectTime(fetchedAt)}
         onReportDelay={() => setIsReportOpen(true)}
         onOpenDelay={(delayNumber) => navigate(`/tracking?delay=${delayNumber}`)}

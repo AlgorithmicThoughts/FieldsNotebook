@@ -18,7 +18,7 @@ import {
   canSetCompletionTime,
   canVerifyHandover,
 } from '@/domain/permissions'
-import type { CurrentUser } from '@/domain/users'
+import { coversCrew, type CurrentUser } from '@/domain/users'
 
 /** The delays the toolbar asks for: the active project, or every assigned one. */
 export type TrackingScope = 'project' | 'all'
@@ -43,11 +43,11 @@ function isActiveProject(delay: DelaySummary, user: CurrentUser): boolean {
 }
 
 function affectsOurCrew(delay: DelaySummary, user: CurrentUser): boolean {
-  return isActiveProject(delay, user) && delay.blockedCrewNames.includes(user.crewName)
+  return isActiveProject(delay, user) && delay.blockedCrewNames.some((name) => coversCrew(user, name))
 }
 
 function ownedByOurCrew(delay: DelaySummary, user: CurrentUser): boolean {
-  return isActiveProject(delay, user) && delay.ownerCrewName === user.crewName
+  return isActiveProject(delay, user) && coversCrew(user, delay.ownerCrewName)
 }
 
 const FILTER_RULES: Record<TrackingFilter, (delay: DelaySummary, user: CurrentUser) => boolean> = {

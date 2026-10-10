@@ -9,3 +9,21 @@ GET {{FieldsNotebook_HostAddress}}/api/users/1
 Accept: application/json
 
 ###
+
+GET {{FieldsNotebook_HostAddress}}/api/me
+Accept: application/json
+X-Demo-User-Id: 3
+
+###
+
+GET {{FieldsNotebook_HostAddress}}/api/projects/1/home
+Accept: application/json
+X-Demo-User-Id: 3
+
+###
+
+GET {{FieldsNotebook_HostAddress}}/api/projects/1/notifications/unread-count
+Accept: application/json
+X-Demo-User-Id: 3
+
+###
