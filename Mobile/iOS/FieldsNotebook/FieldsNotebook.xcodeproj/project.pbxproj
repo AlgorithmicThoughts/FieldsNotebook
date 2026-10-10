@@ -6,6 +6,10 @@
 	objectVersion = 110;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		F10A00000000000000000001 /* FactoryKit in Frameworks */ = {isa = PBXBuildFile; productRef = F10A00000000000000000003 /* FactoryKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		EBE961F7307AA5D400997007 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -51,6 +55,7 @@
 		EBE961E1307AA5D200997007 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				F10A00000000000000000001 /* FactoryKit in Frameworks */,
 			);
 		};
 		EBE961F3307AA5D400997007 /* Frameworks */ = {
@@ -103,6 +108,9 @@
 				EBE961E6307AA5D200997007 /* FieldsNotebook */,
 			);
 			name = FieldsNotebook;
+			packageProductDependencies = (
+				F10A00000000000000000003 /* FactoryKit */,
+			);
 			productName = FieldsNotebook;
 			productReference = EBE961E4307AA5D200997007 /* FieldsNotebook.app */;
 			productType = "com.apple.product-type.application";
@@ -181,6 +189,9 @@
 			);
 			mainGroup = EBE961DB307AA5D200997007;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F10A00000000000000000002 /* XCRemoteSwiftPackageReference "Factory" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = EBE961E5307AA5D200997007 /* Products */;
 			projectDirPath = "";
@@ -548,6 +559,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F10A00000000000000000002 /* XCRemoteSwiftPackageReference "Factory" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/hmlongco/Factory.git";
+			requirement = {
+				kind = exactVersion;
+				version = 3.4.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F10A00000000000000000003 /* FactoryKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F10A00000000000000000002 /* XCRemoteSwiftPackageReference "Factory" */;
+			productName = FactoryKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = EBE961DC307AA5D200997007 /* Project object */;
 	validationLevel = 1;
