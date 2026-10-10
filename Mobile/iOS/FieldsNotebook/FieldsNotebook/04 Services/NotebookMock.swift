@@ -3,13 +3,18 @@ import Foundation
 /// Project-scoped fixtures shared by Tracking, Documents, and Upcoming.
 struct NotebookMock: NotebookProviding {
     private let homeService: any HomeProviding
+    private let blockerService: (any ReportBlockerProviding)?
 
-    init(homeService: any HomeProviding) { self.homeService = homeService }
+    init(homeService: any HomeProviding, blockerService: (any ReportBlockerProviding)? = nil) {
+        self.homeService = homeService
+        self.blockerService = blockerService
+    }
 
     func delays(for project: HomeProject) -> [DelayRecord] {
         let snapshot = homeService.loadHome(for: project)
         var records = snapshot.delays.map { summary in
-            DelayRecord(summary: summary, project: project,
+            if let submitted = blockerService?.records(for: project).first(where: { $0.id == summary.id }) { return submitted }
+            return DelayRecord(summary: summary, project: project,
                         detail: Self.descriptions[summary.id] ?? summary.title,
                         completion: Self.completions[summary.id] ?? "Time not confirmed")
         }

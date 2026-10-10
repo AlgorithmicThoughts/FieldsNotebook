@@ -4,6 +4,10 @@ struct FeatureDestination: View {
     let tab: NotebookTab
     let snapshot: HomeSnapshot
     let trackingMetric: HomeMetric?
+    let projects: [HomeProject]
+    let selectProject: (HomeProject) -> Void
+    let openReports: () -> Void
+    let signOut: () -> Void
     let backToHome: () -> Void
 
     var body: some View {
@@ -16,14 +20,8 @@ struct FeatureDestination: View {
         case .upcoming:
             UpcomingView(project: snapshot.project)
         default:
-            ContentUnavailableView {
-                Label(tab.rawValue, systemImage: tab.symbol)
-            } description: {
-                Text("\(tab.rawValue) will be available in a future update.")
-            } actions: {
-                Button("Back to Home", action: backToHome).buttonStyle(NotebookPrimaryButton())
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity).background(NotebookStyle.bg)
+            WorkspaceDestination(tab: tab, snapshot: snapshot, projects: projects, selectProject: selectProject,
+                                 openReports: openReports, signOut: signOut, backToHome: backToHome)
         }
     }
 }

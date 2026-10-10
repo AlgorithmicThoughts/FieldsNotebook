@@ -7,6 +7,9 @@ enum NotebookStyle {
     static let text = Color("Notebook-text")
     static let muted = Color("Notebook-muted")
     static let control = Color("Notebook-control")
+    static let disabled = Color("Notebook-disabled")
+    static let disabledText = Color("Notebook-disabled-text")
+    static let pressed = Color("Notebook-pressed")
     static let resolved = Color("Notebook-resolved")
     static let resolvedBG = Color("Notebook-resolved-bg")
     static let border = Color("Notebook-border")
@@ -22,4 +25,3 @@ enum NotebookStyle {
     static let urgent = Color("Notebook-urgent")
     static let urgentBG = Color("Notebook-urgent-bg")
 }
-

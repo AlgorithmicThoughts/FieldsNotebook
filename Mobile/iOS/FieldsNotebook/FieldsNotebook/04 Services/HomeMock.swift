@@ -1,7 +1,10 @@
 import Foundation
 
-/// Local fixtures for the home screen. No workflow actions or network requests.
+/// Local fixtures and session-only reported blockers. No network requests.
 struct HomeMock: HomeProviding {
+    private let blockerService: (any ReportBlockerProviding)?
+
+    init(blockerService: (any ReportBlockerProviding)? = nil) { self.blockerService = blockerService }
     let projects = [
         HomeProject(id: "OF-017", name: "Omaha Fabrication", place: "Omaha, Nebraska"),
         HomeProject(id: "WR-042", name: "West River Project", place: "Kansas City, Missouri"),
@@ -9,6 +12,14 @@ struct HomeMock: HomeProviding {
     ]
 
     func loadHome(for project: HomeProject) -> HomeSnapshot {
+        let fixture = fixtureHome(for: project)
+        let submitted = blockerService?.records(for: project).map(\.summary) ?? []
+        return HomeSnapshot(project: fixture.project, user: fixture.user, dateLabel: fixture.dateLabel,
+                            advanceNotice: fixture.advanceNotice, delays: submitted + fixture.delays,
+                            activities: fixture.activities, unreadNotificationCount: fixture.unreadNotificationCount)
+    }
+
+    private func fixtureHome(for project: HomeProject) -> HomeSnapshot {
         let user = HomeUser(name: "John Davis", initials: "JD", crew: "Crew B", role: "Foreman")
         switch project.id {
         case "OF-017":

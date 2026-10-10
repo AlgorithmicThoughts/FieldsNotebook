@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NotebookSidebar: View {
     let snapshot: HomeSnapshot
+    let unreadCount: Int
     @Binding var selection: NotebookTab
 
     var body: some View {
@@ -13,7 +14,7 @@ struct NotebookSidebar: View {
                 VStack(spacing: 6) {
                     ForEach(NotebookTab.workspaceTabs) { tab in
                         NotebookSidebarItem(tab: tab, selected: selection == tab,
-                                            unreadCount: snapshot.unreadNotificationCount) { selection = tab }
+                                            unreadCount: unreadCount) { selection = tab }
                     }
                 }
                 .padding(.horizontal, 12)

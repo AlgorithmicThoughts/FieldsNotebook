@@ -71,7 +71,7 @@ struct HomeView: View {
     }
 
     private var reportButton: some View {
-        Button(action: reportDelay) { Label("Report delay", systemImage: "plus") }
+        Button(action: reportDelay) { Label("Report blocker", systemImage: "plus") }
             .buttonStyle(NotebookPrimaryButton())
     }
 

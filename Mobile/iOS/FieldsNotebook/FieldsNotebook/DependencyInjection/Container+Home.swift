@@ -3,7 +3,7 @@ import FactoryKit
 extension Container {
     @MainActor
     var homeService: Factory<any HomeProviding> {
-        self { @MainActor in HomeMock() }
+        self { @MainActor in HomeMock(blockerService: self.reportBlockerService()) }
     }
 
     @MainActor
@@ -13,7 +13,7 @@ extension Container {
 
     @MainActor
     var notebookService: Factory<any NotebookProviding> {
-        self { @MainActor in NotebookMock(homeService: self.homeService()) }
+        self { @MainActor in NotebookMock(homeService: self.homeService(), blockerService: self.reportBlockerService()) }
     }
 
     @MainActor

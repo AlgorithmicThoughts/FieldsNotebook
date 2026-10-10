@@ -4,6 +4,7 @@ struct WorkspaceHeader: View {
     let snapshot: HomeSnapshot
     let projects: [HomeProject]
     let wide: Bool
+    let unreadCount: Int
     let selectProject: (HomeProject) -> Void
     let openNotifications: () -> Void
     let signOut: () -> Void
@@ -14,10 +15,10 @@ struct WorkspaceHeader: View {
             ProjectSelector(selected: snapshot.project, projects: projects, select: selectProject)
             Spacer(minLength: 0)
             Button(action: openNotifications) {
-                Image(systemName: snapshot.unreadNotificationCount > 0 ? "bell.badge" : "bell")
+                Image(systemName: unreadCount > 0 ? "bell.badge" : "bell")
                     .font(.title3).frame(width: 44, height: 44)
             }
-            .accessibilityLabel("Notifications, \(snapshot.unreadNotificationCount) unread")
+            .accessibilityLabel("Notifications, \(unreadCount) unread")
             WorkspaceAccountMenu(user: snapshot.user, wide: wide, signOut: signOut)
         }
         .padding(.horizontal, wide ? 24 : 16).padding(.vertical, 12)
