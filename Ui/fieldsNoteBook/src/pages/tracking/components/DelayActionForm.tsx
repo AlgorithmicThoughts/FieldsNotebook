@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Button } from '@/components/common/Button'
 import { ChoiceGroup } from '@/components/common/ChoiceGroup'
 import { FormField, FormFieldset } from '@/components/common/Field'
 import { TextArea, TextInput } from '@/components/common/Input'
 import { SelectField } from '@/components/common/Select'
+import { PhotoPicker } from '@/components/delays/PhotoPicker'
 import { DELAY_ACKNOWLEDGMENT_CHOICES, type DelayDetail } from '@/domain/delays'
 import type { CurrentUser } from '@/domain/users'
 import { needsCompletionTime, verifiableImpacts, type DelayActionDraft } from '../delayActionDraft'
@@ -27,6 +28,8 @@ interface DelayActionFieldsProps {
   draft: DelayActionDraft
   disabled: boolean
   onDraftChange: (patch: Partial<DelayActionDraft>) => void
+  /** True while chosen photos are still being read, so the action cannot send yet. */
+  onReadingChange: (reading: boolean) => void
 }
 
 function AcknowledgeFields({ draft, disabled, onDraftChange }: DelayActionFieldsProps) {
@@ -155,6 +158,24 @@ function ReopenFields({ draft, disabled, onDraftChange }: DelayActionFieldsProps
   )
 }
 
+function ResolveFields({ draft, disabled, onDraftChange, onReadingChange }: DelayActionFieldsProps) {
+  return (
+    <FormFieldset
+      name="resolve-proof-of-work"
+      legend="Proof of work"
+      required
+      description="Show the finished work that removed the blocker. The photos stay with this cycle."
+    >
+      <PhotoPicker
+        photos={draft.photos}
+        onChange={(photos) => onDraftChange({ photos })}
+        disabled={disabled}
+        onReadingChange={onReadingChange}
+      />
+    </FormFieldset>
+  )
+}
+
 function RevokeFields() {
   return (
     <p>
@@ -169,11 +190,12 @@ const ACTION_FIELDS: Partial<Record<DelayActionId, (props: DelayActionFieldsProp
   acknowledge: AcknowledgeFields,
   completionTime: CompletionTimeFields,
   verify: VerifyFields,
+  resolve: ResolveFields,
   reopen: ReopenFields,
   revoke: RevokeFields,
 }
 
-interface DelayActionFormProps extends Omit<DelayActionFieldsProps, 'disabled'> {
+interface DelayActionFormProps extends Omit<DelayActionFieldsProps, 'disabled' | 'onReadingChange'> {
   pending: boolean
   onSubmit: () => void
   onCancel: () => void
@@ -182,15 +204,18 @@ interface DelayActionFormProps extends Omit<DelayActionFieldsProps, 'disabled'> 
 /** The values one action needs, with the control that sends it. */
 export function DelayActionForm({ pending, onSubmit, onCancel, ...rest }: DelayActionFormProps) {
   const Fields = ACTION_FIELDS[rest.action]
+  const [isReadingPhotos, setIsReadingPhotos] = useState(false)
 
   return (
     <div className="action-form">
-      {Fields === undefined ? null : <Fields {...rest} disabled={pending} />}
+      {Fields === undefined ? null : (
+        <Fields {...rest} disabled={pending} onReadingChange={setIsReadingPhotos} />
+      )}
 
       <Button
         label={pending ? 'Saving…' : CONFIRM_LABEL[rest.action]}
         variant="primary"
-        disabled={pending}
+        disabled={pending || isReadingPhotos}
         onClick={onSubmit}
       />
       <Button label="Cancel" variant="quiet" disabled={pending} onClick={onCancel} />

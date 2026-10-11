@@ -93,7 +93,7 @@ public partial class DelayManager
     }
 
     public async Task<DelayActionResponse> ResolveAsync(
-        int userId, int projectId, int delayId, CancellationToken cancellationToken)
+        int userId, int projectId, int delayId, ResolveDelayRequest request, CancellationToken cancellationToken)
     {
         var (access, state) = await LoadAsync(userId, projectId, delayId, cancellationToken);
 
@@ -103,11 +103,12 @@ public partial class DelayManager
             "a delay resolves after its handover checks.");
         RequireState(DelayWorkflowEngine.HasEveryHandoverCheck(state), delayId,
             "every affected crew must verify the handover first.");
-        //RequireState(!DelayWorkflowEngine.RequiresProofOfWork(state) || state.HasProofOfWorkPhoto, delayId,
-        //    "a reopened delay needs proof-of-work photos before it closes.");
+        // Every resolution, first or after a reopen, proves the work with its own photos.
+        DelayPhotoRules.Validate(request.Photos, "Attach one to five proof-of-work photos to resolve the delay.");
 
         var plan = new DelayActionPlan(DelayEventTypes.Resolved, DelayStatusCodes.Resolved,
-            DelayCycleChange.CloseCycle(state.CycleId), null, null, null, EveryCrew(state));
+            DelayCycleChange.CloseCycle(state.CycleId), null, null, null, EveryCrew(state),
+            DelayPhotoRules.ToUploads(request.Photos));
 
         return await CommitAsync(state, plan, userId, cancellationToken);
     }
@@ -148,6 +149,7 @@ public partial class DelayManager
     /// <summary>One validated action, ready to become a workflow write.</summary>
     /// <param name="ToStatusCode">Null when the action changes no status, such as a revised completion time.</param>
     /// <param name="RecipientCrewIds">The crews whose Foremen and Superintendents this action concerns.</param>
+    /// <param name="ProofOfWorkPhotos">Only a resolution carries proof-of-work photos.</param>
     private sealed record DelayActionPlan(
         string EventType,
         string? ToStatusCode,
@@ -155,7 +157,8 @@ public partial class DelayManager
         DelayVerificationChange? Verification,
         DateTimeOffset? OldExpectedReadyAt,
         DateTimeOffset? NewExpectedReadyAt,
-        IReadOnlyList<int> RecipientCrewIds);
+        IReadOnlyList<int> RecipientCrewIds,
+        IReadOnlyList<ReportPhotoUploadRecord>? ProofOfWorkPhotos = null);
 
     private IDelayWorkflowAccessor Workflow => accessorFactory.CreateAccessor<IDelayWorkflowAccessor>();
 
@@ -191,7 +194,7 @@ public partial class DelayManager
         var occurredAt = DateTimeOffset.UtcNow;
         var result = await workflow.ApplyAsync(new DelayWorkflowWrite(state.DelayId, state.ProjectId, actorUserId,
             occurredAt, plan.EventType, state.StatusId, toStatusId, plan.Cycle, plan.Verification,
-            plan.OldExpectedReadyAt, plan.NewExpectedReadyAt, recipients), cancellationToken);
+            plan.OldExpectedReadyAt, plan.NewExpectedReadyAt, recipients, plan.ProofOfWorkPhotos ?? []), cancellationToken);
 
         return new DelayActionResponse(state.DelayId, plan.ToStatusCode ?? state.StatusCode, result.CycleId,
             result.ActivityEventId, plan.EventType, occurredAt, result.NoticeCount);

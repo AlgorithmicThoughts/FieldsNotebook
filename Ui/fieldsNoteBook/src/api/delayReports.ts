@@ -1,4 +1,10 @@
-import type { CreateDelayRequest, DelayFormOptions, DelaySpeechResponse, DelaySummary } from '@/domain/delays'
+import type {
+  CreateDelayRequest,
+  DelayFormOptions,
+  DelayPhotoUpload,
+  DelaySpeechResponse,
+  DelaySummary,
+} from '@/domain/delays'
 import { createPhotoThumbnail } from '@/lib/photoThumbnail'
 import { apiGet, apiPostForm } from './client'
 import { ApiError } from './errors'
@@ -21,8 +27,7 @@ function appendFields(form: FormData, fields: Record<string, unknown>) {
   }
 }
 
-async function appendPhoto(form: FormData, request: CreateDelayRequest, index: number) {
-  const photo = request.photos[index]
+async function appendPhoto(form: FormData, photo: DelayPhotoUpload, index: number) {
   let thumbnail: Blob
   try { thumbnail = await createPhotoThumbnail(photo.file) } catch {
     throw new ApiError(400, `Could not read ${photo.file.name}. Try a JPG or PNG photo.`)
@@ -37,6 +42,14 @@ async function appendPhoto(form: FormData, request: CreateDelayRequest, index: n
   })
 }
 
+/**
+ * Adds each photo with a JPEG thumbnail, in the multipart shape the API binds for
+ * both the initial report and a resolution's proof of work.
+ */
+export async function appendPhotos(form: FormData, photos: DelayPhotoUpload[]) {
+  for (let index = 0; index < photos.length; index++) await appendPhoto(form, photos[index], index)
+}
+
 export async function createDelay(request: CreateDelayRequest, options?: RequestOptions): Promise<DelaySummary> {
   const { photos, impacts, notifyUserIds, pin, projectId, ...fields } = request
   const form = new FormData()
@@ -46,6 +59,6 @@ export async function createDelay(request: CreateDelayRequest, options?: Request
     [`Impacts[${index}].BlockedWorkItemId`]: impact.blockedWorkItemId,
   }))
   notifyUserIds.forEach((id, index) => form.append(`NotifyUserIds[${index}]`, String(id)))
-  for (let index = 0; index < photos.length; index++) await appendPhoto(form, request, index)
+  await appendPhotos(form, photos)
   return apiPostForm<DelaySummary>(`/api/projects/${projectId}/delays`, form, options)
 }

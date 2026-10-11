@@ -1,5 +1,6 @@
-import type { DelayAcknowledgmentChoice, DelayStatusCode } from '@/domain/delays'
-import { apiPost, apiPostJson } from './client'
+import type { DelayAcknowledgmentChoice, DelayPhotoUpload, DelayStatusCode } from '@/domain/delays'
+import { apiPost, apiPostForm, apiPostJson } from './client'
+import { appendPhotos } from './delayReports'
 import type { RequestOptions } from './types'
 
 /**
@@ -62,13 +63,19 @@ export function verifyHandover(
   return apiPostJson(actionPath(projectId, delayId, 'verifications'), body, options)
 }
 
-/** The responsible Superintendent closes the cycle after the required checks. */
-export function resolveDelay(
+/**
+ * The responsible Superintendent closes the cycle after the required checks,
+ * attaching one to five proof-of-work photos.
+ */
+export async function resolveDelay(
   projectId: number,
   delayId: number,
+  photos: DelayPhotoUpload[],
   options?: RequestOptions,
 ): Promise<DelayActionResult> {
-  return apiPost(actionPath(projectId, delayId, 'resolution'), options)
+  const form = new FormData()
+  await appendPhotos(form, photos)
+  return apiPostForm(actionPath(projectId, delayId, 'resolution'), form, options)
 }
 
 /** A Superintendent reopens a resolved delay, which opens a new cycle. */

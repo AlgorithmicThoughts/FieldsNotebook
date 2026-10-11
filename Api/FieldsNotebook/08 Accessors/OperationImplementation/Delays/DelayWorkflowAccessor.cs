@@ -3,10 +3,14 @@ using Common.Errors;
 using Database;
 using Database.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Utilities;
+using Utilities.OperationContract;
 
 namespace Accessors.Delays
 {
-    public class DelayWorkflowAccessor(FieldNotebookContext context) : IDelayWorkflowAccessor
+    public class DelayWorkflowAccessor(FieldNotebookContext context, UtilityFactory utilities,
+        ILogger<DelayWorkflowAccessor> logger) : IDelayWorkflowAccessor
     {
         public async Task<DelayWorkflowState?> GetWorkflowStateAsync(
             int projectId, int delayId, CancellationToken cancellationToken)
@@ -30,10 +34,6 @@ namespace Accessors.Delays
 
             var cycleCount = await context.DelayCycles.AsNoTracking()
                 .CountAsync(c => c.DelayId == delayId, cancellationToken);
-            var hasProofOfWork = await context.DelayPhotos.AsNoTracking().AnyAsync(
-                p => p.DelayId == delayId && p.DelayCycleId == cycle.DelayCycleId
-                     && p.Purpose == DelayPhotoPurposes.ProofOfWork,
-                cancellationToken);
             var impacts = await (
                 from i in context.DelayImpacts.AsNoTracking()
                 where i.DelayId == delayId
@@ -45,7 +45,7 @@ namespace Accessors.Delays
 
             return new DelayWorkflowState(delayId, projectId, delay.Code, delay.DelayStatusId, delay.OwnerCrewId,
                 delay.ReportedByCrewId, cycle.DelayCycleId, cycle.ClosedAt is null, cycle.AcknowledgedAt is not null,
-                cycleCount, cycle.ExpectedReadyAt, hasProofOfWork, impacts);
+                cycleCount, cycle.ExpectedReadyAt, impacts);
         }
 
         public async Task<int?> GetStatusIdAsync(string statusCode, CancellationToken cancellationToken) =>
@@ -73,21 +73,65 @@ namespace Accessors.Delays
         /// <summary>
         /// One transaction covers all of it. The activity event saves before its notices because the
         /// generated event ID is their foreign key and the mapping carries no navigation to resolve it.
+        /// Proof-of-work photos upload after the conditional status move, so a concurrent action
+        /// refuses the write before any file is stored, and a later failure removes what was uploaded.
         /// </summary>
         public async Task<DelayWorkflowResult> ApplyAsync(DelayWorkflowWrite write, CancellationToken cancellationToken)
         {
             await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-            var cycleId = await SaveCycleAsync(write, cancellationToken);
-            await MoveStatusAsync(write, cancellationToken);
-            AddVerification(write, cycleId);
-            var activityEvent = AddEvent(write, cycleId);
-            await context.SaveChangesAsync(cancellationToken);
+            var photoStorage = write.ProofOfWorkPhotos.Count == 0
+                ? null
+                : new DelayPhotoStorage(utilities.CreateManager<IAzureBlobStorageUtility>(), logger);
+            try
+            {
+                var cycleId = await SaveCycleAsync(write, cancellationToken);
+                await MoveStatusAsync(write, cancellationToken);
+                AddVerification(write, cycleId);
+                if (photoStorage is not null)
+                {
+                    await AddProofOfWorkAsync(write, cycleId, photoStorage, cancellationToken);
+                }
 
-            var noticeCount = AddNotices(write, activityEvent.Id);
-            await context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+                var activityEvent = AddEvent(write, cycleId);
+                await context.SaveChangesAsync(cancellationToken);
 
-            return new DelayWorkflowResult(cycleId, activityEvent.Id, noticeCount);
+                var noticeCount = AddNotices(write, activityEvent.Id);
+                await context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                return new DelayWorkflowResult(cycleId, activityEvent.Id, noticeCount);
+            }
+            catch
+            {
+                if (photoStorage is not null)
+                {
+                    await photoStorage.CleanUpAsync();
+                }
+
+                throw;
+            }
+        }
+
+        private async Task AddProofOfWorkAsync(
+            DelayWorkflowWrite write, int cycleId, DelayPhotoStorage photoStorage, CancellationToken cancellationToken)
+        {
+            var prefix = $"project-{write.ProjectId}/{write.OccurredAt:yyyy-MM-dd}/report-{write.DelayId}/proof-of-work/cycle-{cycleId}";
+            var uploaded = await photoStorage.UploadAsync(write.ProofOfWorkPhotos, prefix, cancellationToken);
+
+            // CreatedAt matches the closure time, so each photo precedes or equals the cycle's ClosedAt.
+            context.DelayPhotos.AddRange(uploaded.Select(p => new DelayPhoto
+            {
+                DelayId = write.DelayId,
+                DelayCycleId = cycleId,
+                Purpose = DelayPhotoPurposes.ProofOfWork,
+                CreatedByUserId = write.ActorUserId,
+                OriginalUrl = p.OriginalUrl,
+                ThumbnailUrl = p.ThumbnailUrl,
+                FileName = p.FileName,
+                Latitude = p.Latitude,
+                Longitude = p.Longitude,
+                CreatedAt = write.OccurredAt,
+            }));
         }
 
         private async Task<int> SaveCycleAsync(DelayWorkflowWrite write, CancellationToken cancellationToken)

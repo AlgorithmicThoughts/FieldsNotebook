@@ -93,11 +93,17 @@ function requestHeaders(body: unknown): Record<string, string> {
   return headers;
 }
 
+/**
+ * The ProblemDetails title, followed by its detail when the API says why,
+ * such as the reason a delay cannot take an action yet.
+ */
 async function problemTitle(response: Response): Promise<string> {
   try {
-    const problem = (await response.json()) as { title?: unknown };
+    const problem = (await response.json()) as { title?: unknown; detail?: unknown };
+    const title = typeof problem.title === "string" ? problem.title : UNREACHABLE;
+    const detail = typeof problem.detail === "string" ? problem.detail.trim() : "";
 
-    return typeof problem.title === "string" ? problem.title : UNREACHABLE;
+    return detail === "" ? title : `${title} ${detail[0].toUpperCase()}${detail.slice(1)}`;
   } catch {
     return UNREACHABLE;
   }

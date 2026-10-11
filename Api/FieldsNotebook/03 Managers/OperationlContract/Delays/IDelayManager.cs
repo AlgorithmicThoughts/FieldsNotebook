@@ -18,8 +18,11 @@ public interface IDelayManager
     /// <summary>The affected crew's Foreman records a successful handover check for the current cycle.</summary>
     Task<DelayActionResponse> VerifyHandoverAsync(int userId, int projectId, int delayId, VerifyHandoverRequest request, CancellationToken cancellationToken);
 
-    /// <summary>The responsible Superintendent closes the cycle after the required handover checks.</summary>
-    Task<DelayActionResponse> ResolveAsync(int userId, int projectId, int delayId, CancellationToken cancellationToken);
+    /// <summary>
+    /// The responsible Superintendent closes the cycle after the required handover checks, attaching
+    /// proof-of-work photos that are stored against the closing cycle.
+    /// </summary>
+    Task<DelayActionResponse> ResolveAsync(int userId, int projectId, int delayId, ResolveDelayRequest request, CancellationToken cancellationToken);
 
     /// <summary>A Superintendent reopens a resolved delay, which opens a new cycle for the same delay.</summary>
     Task<DelayActionResponse> ReopenAsync(int userId, int projectId, int delayId, ReopenDelayRequest request, CancellationToken cancellationToken);

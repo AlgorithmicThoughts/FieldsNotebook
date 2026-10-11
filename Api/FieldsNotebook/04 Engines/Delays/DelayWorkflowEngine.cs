@@ -33,8 +33,5 @@ namespace Engines.Delays
         /// <summary>Every affected crew verified the handover for the current cycle.</summary>
         public static bool HasEveryHandoverCheck(DelayWorkflowState state) =>
             state.Impacts.Count > 0 && state.Impacts.All(i => i.IsVerifiedInCycle);
-
-        /// <summary>A reopened delay needs proof-of-work photos in its reopened cycle before closure.</summary>
-        public static bool RequiresProofOfWork(DelayWorkflowState state) => state.CycleCount > 1;
     }
 }
