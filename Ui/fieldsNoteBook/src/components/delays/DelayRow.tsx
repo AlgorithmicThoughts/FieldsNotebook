@@ -36,7 +36,7 @@ export function DelayRow({ delay, onOpen }: DelayRowProps) {
         <strong>{delay.title}</strong>
 
         <p>
-          {delay.ownerCrewName} <Icon icon={ArrowRight} size={13} />{' '}
+          {delay.ownerCrewName} <Icon icon={ArrowRight} size={13} className="inline-arrow" />{' '}
           {delay.blockedCrewNames.join(', ')} · {delay.locationName}
           <br />
           <span className="delay-project">{delay.projectName}</span>

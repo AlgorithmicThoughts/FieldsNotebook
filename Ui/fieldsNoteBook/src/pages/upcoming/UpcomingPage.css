@@ -22,7 +22,12 @@
   justify-items: start;
   gap: 2px;
   flex: none;
-  width: 118px;
+  width: 140px;
+}
+
+/* "Wednesday · 7 October" reads as one value; it should not break across lines. */
+.upcoming-when span:last-child {
+  white-space: nowrap;
 }
 
 .upcoming-when strong {
