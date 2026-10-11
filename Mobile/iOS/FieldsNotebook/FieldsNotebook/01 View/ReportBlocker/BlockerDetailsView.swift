@@ -6,7 +6,7 @@ struct BlockerDetailsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            BlockerDescriptionField(description: $viewModel.draft.description)
+            BlockerDescriptionField(viewModel: viewModel)
             if wide {
                 HStack(alignment: .top, spacing: 20) {
                     BlockerCrewFields(viewModel: viewModel).frame(maxWidth: .infinity)

@@ -11,6 +11,8 @@ struct WorkspaceDestination: View {
 
     var body: some View {
         switch tab {
+        case .siteMap:
+            SiteMapView(project: snapshot.project)
         case .settings:
             SettingsView(snapshot: snapshot, projects: projects, selectProject: selectProject,
                          openReports: openReports, signOut: signOut)

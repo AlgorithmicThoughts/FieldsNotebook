@@ -52,6 +52,7 @@ struct BlockerPin: Equatable {
 }
 
 struct BlockerDraft {
+    var title = ""
     var description = ""
     var responsibleCrewID = ""
     var affectedCrewIDs: Set<String> = []
@@ -67,7 +68,15 @@ struct BlockerDraft {
     var additionalRecipientIDs: Set<String> = []
 }
 
-enum BlockerRecordingState { case idle, recording, ready }
+enum BlockerRecordingState: String {
+    case idle = "Record a description"
+    case starting = "Opening microphone…"
+    case recording = "Recording your report"
+    case stopping = "Finishing recording…"
+    case ready = "Recording ready to send"
+    case processing = "Transcribing and selecting fields…"
+    case cancelling = "Cancelling…"
+}
 
 nonisolated enum BlockerFormError: LocalizedError {
     case invalid(String)

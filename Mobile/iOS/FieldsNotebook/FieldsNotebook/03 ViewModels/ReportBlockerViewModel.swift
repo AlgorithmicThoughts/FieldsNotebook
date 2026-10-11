@@ -7,6 +7,7 @@ final class ReportBlockerViewModel {
     let project: HomeProject
     let user: HomeUser
     let options: BlockerOptions
+    let recording: BlockerRecordingViewModel
     var draft: BlockerDraft
     private(set) var step: BlockerStep = .details
     private(set) var issues: [String] = []
@@ -16,11 +17,12 @@ final class ReportBlockerViewModel {
     @ObservationIgnored private let service: any ReportBlockerProviding
     @ObservationIgnored private let photoLoader: BlockerPhotoLoader
 
-    init(project: HomeProject, user: HomeUser, service: any ReportBlockerProviding, photoLoader: BlockerPhotoLoader) {
+    init(project: HomeProject, user: HomeUser, service: any ReportBlockerProviding, photoLoader: BlockerPhotoLoader, recording: BlockerRecordingViewModel) {
         self.project = project
         self.user = user
         self.service = service
         self.photoLoader = photoLoader
+        self.recording = recording
         options = service.options(for: project)
         draft = service.draft(for: project, user: user) ?? BlockerDraft()
         setInitialCrews()
@@ -57,6 +59,35 @@ final class ReportBlockerViewModel {
     func back() {
         issues = []
         step = step == .review ? .evidence : .details
+    }
+
+    func sendRecording() {
+        let baseline = draft
+        let crews = options.crews.map { SpeechCrewOption(id: $0.id, name: $0.name) }
+        recording.send(crews: crews) { [weak self] transcript, fields in
+            self?.applySpeech(transcript, fields: fields, baseline: baseline)
+        }
+    }
+
+    private func applySpeech(_ transcript: String, fields: SpokenBlockerFields?, baseline: BlockerDraft) {
+        let suggested = fields?.description.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let description = suggested.isEmpty ? transcript : suggested
+        draft.description = keepingEdits(draft.description, baseline: baseline.description, suggestion: String(description.prefix(4000)))
+        guard let fields else { return }
+        draft.title = keepingEdits(draft.title, baseline: baseline.title, suggestion: String(fields.title.prefix(200)))
+        applySpeechSelections(fields, baseline: baseline)
+    }
+
+    private func keepingEdits(_ current: String, baseline: String, suggestion: String) -> String {
+        current == baseline ? suggestion : current
+    }
+
+    private func applySpeechSelections(_ fields: SpokenBlockerFields, baseline: BlockerDraft) {
+        if draft.responsibleCrewID == baseline.responsibleCrewID,
+           let crew = options.crews.first(where: { $0.name == fields.responsibleCrew }) {
+            draft.responsibleCrewID = crew.id
+        }
+        if draft.reason == baseline.reason, let reason = fields.reason { draft.reason = reason.rawValue }
     }
 
     func saveDraft() {

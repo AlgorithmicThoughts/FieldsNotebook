@@ -1,9 +1,11 @@
 import SwiftUI
 import FactoryKit
+import AVFoundation
 
 struct ReportBlockerSheet: View {
     @State private var viewModel: ReportBlockerViewModel
     @State private var confirmClose = false
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     let onSubmitted: () -> Void
@@ -27,6 +29,9 @@ struct ReportBlockerSheet: View {
                         }.padding(24).id("formTop")
                     }
                     .scrollDismissesKeyboard(.interactively)
+                    .onChange(of: viewModel.recording.isExpanded) { _, expanded in
+                        if expanded { proxy.scrollTo("blockerRecording", anchor: .bottom) }
+                    }
                     .onChange(of: viewModel.step) { _, _ in proxy.scrollTo("formTop", anchor: .top) }
                     .onChange(of: viewModel.issues) { _, issues in if !issues.isEmpty { proxy.scrollTo("formTop", anchor: .top) } }
                 }
@@ -37,7 +42,7 @@ struct ReportBlockerSheet: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close", action: close) } }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if viewModel.submittedRecord == nil {
-                    BlockerSheetFooter(viewModel: viewModel, save: saveAndClose).disabled(viewModel.isLoadingPhotos)
+                    BlockerSheetFooter(viewModel: viewModel, save: saveAndClose).disabled(viewModel.isLoadingPhotos || viewModel.recording.isActive)
                 }
             }
         }
@@ -48,6 +53,11 @@ struct ReportBlockerSheet: View {
             Button("Save draft & close", action: saveAndClose)
             Button("Discard draft", role: .destructive) { viewModel.discardDraft(); dismiss() }
             Button("Keep editing", role: .cancel) {}
+        }
+        .onDisappear { viewModel.recording.cancel() }
+        .onChange(of: scenePhase) { _, phase in if phase == .background { viewModel.recording.cancel() } }
+        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in
+            if viewModel.recording.state == .recording { viewModel.recording.cancel() }
         }
         .onChange(of: viewModel.submittedRecord?.id) { _, id in if id != nil { onSubmitted() } }
     }
@@ -74,6 +84,7 @@ struct ReportBlockerSheet: View {
     }
 
     private func close() {
+        viewModel.recording.cancel()
         if viewModel.submittedRecord != nil { dismiss() }
         else { confirmClose = true }
     }

@@ -5,6 +5,7 @@ struct BlockerReviewSummary: View {
 
     var body: some View {
         NotebookSectionCard(title: "Review the blocker", symbol: "doc.text") {
+            if !viewModel.draft.title.isEmpty { Text(viewModel.draft.title).font(.headline) }
             Text(viewModel.draft.description).font(.body).fixedSize(horizontal: false, vertical: true)
             Divider()
             NotebookInfoRow(title: "Responsible", detail: viewModel.responsibleCrew?.name ?? "", symbol: "person.2")

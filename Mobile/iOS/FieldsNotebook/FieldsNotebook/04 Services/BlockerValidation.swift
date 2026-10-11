@@ -7,6 +7,7 @@ enum BlockerValidation {
 
     private static func descriptionIssues(_ draft: BlockerDraft) -> [String] {
         [draft.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Describe the blocker and the work it stops." : nil,
+         draft.title.count > 200 ? "Keep the title within 200 characters." : nil,
          draft.description.count > 4000 ? "Keep the description within 4,000 characters." : nil,
          DelayReasons.all.contains(draft.reason) ? nil : "Choose a reason."].compactMap { $0 }
     }

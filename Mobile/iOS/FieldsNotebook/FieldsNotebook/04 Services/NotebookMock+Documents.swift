@@ -9,12 +9,7 @@ extension NotebookMock {
         SiteDocument(
             id: project.id + "-safety", project: project, title: "Site safety plan", category: .safety,
             symbol: "checkmark.shield", revision: "Sample · Rev 03", note: "Project safety reference",
-            sections: [
-                DocumentSection(id: "contacts", title: "Site contacts", detail: "Sample section. Use the approved project directory for actual site contacts."),
-                DocumentSection(id: "hazards", title: "Hazard controls", detail: "Sample section. This preview contains no approved hazard-control instructions."),
-                DocumentSection(id: "response", title: "Emergency response", detail: "Sample section. Refer to the approved site emergency plan."),
-                DocumentSection(id: "permits", title: "Access and permits", detail: "Sample section. Confirm current access requirements with the project team.")
-            ]
+            sections: [], pdfResourceName: "sample-safety-plan"
         )
     }
 

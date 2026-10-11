@@ -79,4 +79,5 @@ struct SiteDocument: Identifiable {
     let revision: String
     let note: String
     let sections: [DocumentSection]
+    var pdfResourceName: String? = nil
 }

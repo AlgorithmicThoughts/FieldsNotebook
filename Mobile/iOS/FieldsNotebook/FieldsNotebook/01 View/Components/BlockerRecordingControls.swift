@@ -2,12 +2,17 @@ import SwiftUI
 
 struct BlockerRecordingControls: View {
     let viewModel: BlockerRecordingViewModel
+    let send: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(status, systemImage: viewModel.state == .recording ? "waveform" : "mic")
-                .font(.subheadline.weight(.semibold)).accessibilityAddTraits(.updatesFrequently)
-            Text("UI preview · Audio capture and Apple Speech will be added later.")
+                .font(.subheadline.weight(.semibold))
+            if let ends = viewModel.recordingEnds, viewModel.state == .recording {
+                ProgressView(timerInterval: ends.addingTimeInterval(-30)...ends, countsDown: true)
+                    .accessibilityLabel("Recording time remaining")
+            }
+            Text("Up to 30 seconds. Send transcribes using Apple Speech and suggests report fields. Apple Intelligence is used when available.")
                 .font(.caption).foregroundStyle(NotebookStyle.muted)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 12) { controls }
@@ -18,20 +23,17 @@ struct BlockerRecordingControls: View {
         .background(NotebookStyle.soft, in: RoundedRectangle(cornerRadius: 12))
     }
 
-    private var status: String {
-        if viewModel.state == .recording { return "Recording preview in progress" }
-        return viewModel.state == .ready ? "Ready to send recording preview" : "Record a description"
-    }
+    private var status: String { viewModel.state.rawValue }
 
     @ViewBuilder
     private var controls: some View {
         if viewModel.state == .recording {
             Button(action: viewModel.stop) { Label("Stop", systemImage: "stop.circle") }.buttonStyle(.bordered)
-        } else {
+        } else if viewModel.state == .idle || viewModel.state == .ready {
             Button(action: viewModel.start) { Label("Start recording", systemImage: "mic") }.buttonStyle(.bordered)
-        }
-        Button("Cancel", action: viewModel.cancel).buttonStyle(.bordered)
-        Button(action: viewModel.send) { Label("Send", systemImage: "paperplane") }
+        } else { ProgressView() }
+        Button("Cancel", action: viewModel.cancel).buttonStyle(.bordered).disabled(viewModel.state == .cancelling)
+        Button(action: send) { Label("Send", systemImage: "paperplane") }
             .buttonStyle(NotebookPrimaryButton()).disabled(!viewModel.canSend)
     }
 }
