@@ -8,6 +8,7 @@ using Common.Roles;
 using Common.Users;
 using DataContract.Delays;
 using Managers;
+using Microsoft.AspNetCore.Http;
 using Managers.Delays;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -145,7 +146,7 @@ public class DelayWorkflowManagerTests
         SetState(StateOf(DelayStatusCodes.ReadyForHandover));
 
         await Assert.ThrowsAsync<DelayStateConflictException>(
-            () => Manager().ResolveAsync(UserId, ProjectId, DelayId, CancellationToken.None));
+            () => Manager().ResolveAsync(UserId, ProjectId, DelayId, ProofOfWork(), CancellationToken.None));
 
         AssertNothingWritten();
     }
@@ -154,10 +155,36 @@ public class DelayWorkflowManagerTests
     public async Task ResolveAsync_ReopenedCycleWithoutProofOfWorkPhotos_RefusesBeforeAnyWrite()
     {
         GrantAccess(RoleNames.Superintendent, Directs(OwnerCrewId));
-        SetState(VerifiedState() with { CycleCount = 2, HasProofOfWorkPhoto = false });
+        SetState(VerifiedState() with { CycleCount = 2 });
 
-        await Assert.ThrowsAsync<DelayStateConflictException>(
-            () => Manager().ResolveAsync(UserId, ProjectId, DelayId, CancellationToken.None));
+        await Assert.ThrowsAsync<DelayReportValidationException>(
+            () => Manager().ResolveAsync(UserId, ProjectId, DelayId, new ResolveDelayRequest(), CancellationToken.None));
+
+        AssertNothingWritten();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_FirstCycleWithoutProofOfWorkPhotos_RefusesBeforeAnyWrite()
+    {
+        GrantAccess(RoleNames.Superintendent, Directs(OwnerCrewId));
+        SetState(VerifiedState());
+
+        await Assert.ThrowsAsync<DelayReportValidationException>(
+            () => Manager().ResolveAsync(UserId, ProjectId, DelayId, new ResolveDelayRequest(), CancellationToken.None));
+
+        AssertNothingWritten();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ProofOfWorkIsNotAnImage_RefusesBeforeAnyWrite()
+    {
+        GrantAccess(RoleNames.Superintendent, Directs(OwnerCrewId));
+        SetState(VerifiedState());
+        var request = ProofOfWork();
+        request.Photos[0].File = Photo("notes.txt", "text/plain");
+
+        await Assert.ThrowsAsync<DelayReportValidationException>(
+            () => Manager().ResolveAsync(UserId, ProjectId, DelayId, request, CancellationToken.None));
 
         AssertNothingWritten();
     }
@@ -168,12 +195,14 @@ public class DelayWorkflowManagerTests
         GrantAccess(RoleNames.Superintendent, Directs(OwnerCrewId));
         SetState(VerifiedState());
 
-        var result = await Manager().ResolveAsync(UserId, ProjectId, DelayId, CancellationToken.None);
+        var result = await Manager().ResolveAsync(UserId, ProjectId, DelayId, ProofOfWork(), CancellationToken.None);
 
         Assert.Equal((DelayStatusCodes.Resolved, DelayEventTypes.Resolved), (result.StatusCode, result.EventType));
         var write = Assert.IsType<DelayWorkflowWrite>(_write);
         Assert.True(write.Cycle.Close);
         Assert.Equal(CycleId, write.Cycle.CycleId);
+        var photo = Assert.Single(write.ProofOfWorkPhotos);
+        Assert.Equal(("fixed.jpg", "image/jpeg"), (photo.FileName, photo.ContentType));
         _workflow.Verify(a => a.GetCrewContactsAsync(ProjectId,
             It.Is<IReadOnlyCollection<int>>(crews => crews.Contains(OwnerCrewId) && crews.Contains(AffectedCrewId)),
             It.IsAny<CancellationToken>()), Times.Once);
@@ -243,13 +272,23 @@ public class DelayWorkflowManagerTests
 
     private static DelayWorkflowState StateOf(string statusCode) =>
         new(DelayId, ProjectId, statusCode, CurrentStatusId, OwnerCrewId, ReporterCrewId, CycleId, true, false, 1,
-            null, false, [new DelayWorkflowImpactRecord(ImpactId, AffectedCrewId, false)]);
+            null, [new DelayWorkflowImpactRecord(ImpactId, AffectedCrewId, false)]);
 
     private static DelayWorkflowState VerifiedState() =>
         StateOf(DelayStatusCodes.ReadyForHandover) with
         {
             Impacts = [new DelayWorkflowImpactRecord(ImpactId, AffectedCrewId, true)],
         };
+
+    private static ResolveDelayRequest ProofOfWork() => new()
+    {
+        Photos = [new() { File = Photo("fixed.jpg", "image/jpeg"), Thumbnail = Photo("thumbnail.jpg", "image/jpeg") }],
+    };
+
+    private static FormFile Photo(string name, string contentType) => new(new MemoryStream([1, 2, 3]), 0, 3, "photo", name)
+    {
+        Headers = new HeaderDictionary(), ContentType = contentType,
+    };
 
     private static CrewLeadRecord Directs(int crewId) => new(crewId, ProjectId, $"Crew {crewId}", false);
 

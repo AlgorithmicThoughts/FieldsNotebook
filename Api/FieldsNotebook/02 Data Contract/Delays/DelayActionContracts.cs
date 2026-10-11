@@ -17,6 +17,15 @@ public sealed record VerifyHandoverRequest(
     [Range(1, int.MaxValue)] int ImpactId,
     [StringLength(1000)] string? Note);
 
+/// <summary>
+/// Proof-of-work photos that show the blocker is gone. Every resolution carries them, sent as
+/// multipart form data in the same shape as the initial report's photos.
+/// </summary>
+public sealed class ResolveDelayRequest
+{
+    [MinLength(1), MaxLength(5)] public List<DelayReportPhoto> Photos { get; set; } = [];
+}
+
 /// <param name="Reason">DelayCycles.OpenReason for the new cycle. A reopen always records one.</param>
 public sealed record ReopenDelayRequest(
     [Required, StringLength(1000, MinimumLength = 1)] string Reason);

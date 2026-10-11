@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/common/Button'
 import type { DelayDetail } from '@/domain/delays'
 import type { CurrentUser } from '@/domain/users'
@@ -26,12 +26,25 @@ interface DelayNextStepProps {
 export function DelayNextStep({ note, offers, delay, user, onCompleted }: DelayNextStepProps) {
   const [openAction, setOpenAction] = useState<DelayActionId | null>(null)
   const [draft, setDraft] = useState<DelayActionDraft>(EMPTY_ACTION_DRAFT)
+  const previews = useRef<string[]>([])
   // The accepted action closes its own form; the reloaded delay offers what comes next.
   const { pending, error, submit, clearError } = useDelayAction(delay, () => {
     setOpenAction(null)
-    setDraft(EMPTY_ACTION_DRAFT)
+    resetDraft(EMPTY_ACTION_DRAFT)
     onCompleted()
   })
+
+  // Chosen photos hold object URLs for their previews. Release them when the card unmounts.
+  useEffect(() => {
+    previews.current = draft.photos.map((photo) => photo.previewUrl)
+  }, [draft.photos])
+  useEffect(() => () => previews.current.forEach((url) => URL.revokeObjectURL(url)), [])
+
+  /** Replaces the draft and releases the previews of any photos it drops. */
+  function resetDraft(next: DelayActionDraft) {
+    draft.photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl))
+    setDraft(next)
+  }
 
   function open(action: DelayActionId) {
     clearError()
@@ -44,13 +57,14 @@ export function DelayNextStep({ note, offers, delay, user, onCompleted }: DelayN
     // A Foreman who covers one affected crew never has to choose it.
     const [onlyImpact] = verifiableImpacts(delay, user)
 
-    setDraft({ ...EMPTY_ACTION_DRAFT, impactId: onlyImpact?.id ?? null })
+    resetDraft({ ...EMPTY_ACTION_DRAFT, impactId: onlyImpact?.id ?? null })
     setOpenAction(action)
   }
 
   function close() {
     clearError()
     setOpenAction(null)
+    resetDraft(EMPTY_ACTION_DRAFT)
   }
 
   return (

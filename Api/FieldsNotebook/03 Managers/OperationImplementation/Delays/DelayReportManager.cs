@@ -65,8 +65,7 @@ public sealed class DelayReportManager(AccessorFactory accessors) : IDelayReport
         ValidateImpacts(r, data);
         ValidateReportType(r);
         ValidateLocation(r, data);
-        Require(r.Photos.Count is >= 1 and <= 5, "A delay report needs one to five photos.");
-        foreach (var photo in r.Photos) ValidatePhoto(photo);
+        DelayPhotoRules.Validate(r.Photos, "A delay report needs one to five photos.");
         Require(r.NotifyUserIds.All(id => data.People.Any(p => p.UserId == id)), "Notification recipients must belong to this project.");
     }
 
@@ -112,22 +111,6 @@ public sealed class DelayReportManager(AccessorFactory accessors) : IDelayReport
         // The bundled site image has no database map record; its pin still persists.
     }
 
-    private static void ValidatePhoto(DelayReportPhoto photo)
-    {
-        Require(photo.File is { Length: > 0 and <= 25 * 1024 * 1024 }, "Each photo must be nonempty and no larger than 25 MB.");
-        Require(photo.File.ContentType is "image/jpeg" or "image/png" or "image/heic" or "image/heif", "Use JPG, PNG, or HEIC photos.");
-        Require(photo.Thumbnail is { Length: > 0 and <= 2 * 1024 * 1024, ContentType: "image/jpeg" }, "A JPEG thumbnail is required for each photo.");
-        ValidatePhotoGps(photo);
-        Require(Path.GetFileName(photo.File.FileName).Length <= 255, "Photo file names allow up to 255 characters.");
-    }
-
-    private static void ValidatePhotoGps(DelayReportPhoto photo)
-    {
-        Require(photo.Latitude.HasValue == photo.Longitude.HasValue, "Photo GPS requires both latitude and longitude.");
-        Require(photo.Latitude is null or (>= -90 and <= 90), "Photo latitude is invalid.");
-        Require(photo.Longitude is null or (>= -180 and <= 180), "Photo longitude is invalid.");
-    }
-
     private static ReportCrewRecord RequireCrewAuthority(int userId, DelayReportRequest r, DelayReportOptionsRecord data)
     {
         var crew = data.Crews.SingleOrDefault(c => c.ForemanId == userId)
@@ -158,8 +141,7 @@ public sealed class DelayReportManager(AccessorFactory accessors) : IDelayReport
             r.DelayTagId, r.ReportType, r.BlockingWorkItemId, r.SegmentId, r.SiteMapId, r.PinX, r.PinY,
             LocationSource(r), r.LocationName?.Trim(), createdAt,
             r.Impacts.Select(i => new ReportImpactRecord(i.BlockedCrewId, i.BlockedWorkItemId)).ToList(),
-            r.Photos.Select(p => new ReportPhotoUploadRecord(p.File.OpenReadStream, p.Thumbnail.OpenReadStream,
-                p.File.ContentType, Path.GetFileName(p.File.FileName), p.Latitude, p.Longitude)).ToList(), Recipients(r, data));
+            DelayPhotoRules.ToUploads(r.Photos), Recipients(r, data));
 
     private static DelaySummaryResponse ToSummary(ReportSavedRecord saved, ProjectAccessRecord access,
         DelayReportRequest r, DelayReportOptionsRecord data, DateTimeOffset createdAt)

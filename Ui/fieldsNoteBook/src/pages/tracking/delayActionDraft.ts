@@ -15,6 +15,11 @@ import type {
   DelayImpactDetail,
 } from "@/domain/delays";
 import { coversCrew, type CurrentUser } from "@/domain/users";
+import {
+  MAX_PHOTOS,
+  MIN_PHOTOS,
+  type PhotoDraft,
+} from "@/components/delays/delayDraft";
 import type { DelayActionId } from "./trackingView";
 
 /** Everything the action forms collect. One action reads only the fields it needs. */
@@ -26,6 +31,8 @@ export interface DelayActionDraft {
   /** DelayImpacts.Id the Foreman verifies, chosen from their own crew's impacts. */
   impactId: number | null;
   reason: string;
+  /** Proof-of-work photos that close the cycle. Only a resolution sends them. */
+  photos: PhotoDraft[];
 }
 
 export const EMPTY_ACTION_DRAFT: DelayActionDraft = {
@@ -34,13 +41,14 @@ export const EMPTY_ACTION_DRAFT: DelayActionDraft = {
   expectedReadyAt: "",
   impactId: null,
   reason: "",
+  photos: [],
 };
 
 /**
  * Actions that carry no values. They submit on the first click, except the
  * withdrawal, which asks first because no approved rule reopens a revoked delay.
  */
-const IMMEDIATE_ACTIONS: DelayActionId[] = ["requestCheck", "resolve"];
+const IMMEDIATE_ACTIONS: DelayActionId[] = ["requestCheck"];
 
 export function submitsImmediately(action: DelayActionId): boolean {
   return IMMEDIATE_ACTIONS.includes(action);
@@ -108,6 +116,13 @@ export function validateActionDraft(
     return "Say why this delay is reopening.";
   }
 
+  if (
+    action === "resolve" &&
+    (draft.photos.length < MIN_PHOTOS || draft.photos.length > MAX_PHOTOS)
+  ) {
+    return `Add ${MIN_PHOTOS} to ${MAX_PHOTOS} proof-of-work photos.`;
+  }
+
   return null;
 }
 
@@ -151,7 +166,16 @@ export function submitDelayAction(
         options,
       );
     case "resolve":
-      return resolveDelay(projectId, id, options);
+      return resolveDelay(
+        projectId,
+        id,
+        draft.photos.map(({ file, latitude, longitude }) => ({
+          file,
+          latitude,
+          longitude,
+        })),
+        options,
+      );
     case "reopen":
       return reopenDelay(projectId, id, draft.reason.trim(), options);
     case "revoke":

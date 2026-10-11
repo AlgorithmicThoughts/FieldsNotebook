@@ -65,11 +65,15 @@ public class DelayController(ManagerFactory managerFactory) : ControllerBase
         Manager.VerifyHandoverAsync(UserId, projectId, delayId, request, Aborted);
 
     [HttpPost("{delayId}/resolution", Name = "ResolveDelayAsync")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(140 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 140 * 1024 * 1024)]
     [ProducesResponseType<DelayActionResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public Task<DelayActionResponse> ResolveAsync(int projectId, int delayId) =>
-        Manager.ResolveAsync(UserId, projectId, delayId, Aborted);
+    public Task<DelayActionResponse> ResolveAsync(int projectId, int delayId, [FromForm] ResolveDelayRequest request) =>
+        Manager.ResolveAsync(UserId, projectId, delayId, request, Aborted);
 
     [HttpPost("{delayId}/reopen", Name = "ReopenDelayAsync")]
     [ProducesResponseType<DelayActionResponse>(StatusCodes.Status200OK)]

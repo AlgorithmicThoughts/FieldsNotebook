@@ -35,7 +35,7 @@ interface PhotoPickerProps {
   onReadingChange: (reading: boolean) => void
 }
 
-/** One to five photos on the initial report, with EXIF GPS when a file has it. */
+/** One to five photos for a report or a resolution's proof of work, with EXIF GPS when a file has it. */
 export function PhotoPicker({ photos, onChange, disabled, onReadingChange }: PhotoPickerProps) {
   const libraryInput = useRef<HTMLInputElement>(null)
   const alive = useRef(false)

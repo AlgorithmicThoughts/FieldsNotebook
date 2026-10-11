@@ -388,7 +388,7 @@ export function toNextStepNote(delay: DelayDetail, user: CurrentUser): string {
 
   if (delay.statusCode === "ReadyForHandover" && canResolve(user, delay)) {
     return hasEveryHandoverCheck(delay)
-      ? "Every affected crew verified the handover, so you can resolve this delay."
+      ? "Every affected crew verified the handover. Attach proof-of-work photos to resolve this delay."
       : "Wait for every affected crew’s Foreman to verify the handover before you resolve it.";
   }
 

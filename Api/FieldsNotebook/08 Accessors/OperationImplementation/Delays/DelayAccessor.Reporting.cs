@@ -55,21 +55,21 @@ public partial class DelayAccessor
     public async Task<ReportSavedRecord> CreateReportAsync(DelayReportRecord report, CancellationToken cancellationToken)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        var uploadedNames = new List<string>();
+        var photoStorage = new DelayPhotoStorage(Utilities.CreateManager<IAzureBlobStorageUtility>(), logger);
         try
         {
-            var saved = await SaveReportRowsAsync(report, uploadedNames, cancellationToken);
+            var saved = await SaveReportRowsAsync(report, photoStorage, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return saved;
         }
         catch
         {
-            await CleanUpUploadsAsync(uploadedNames);
+            await photoStorage.CleanUpAsync();
             throw;
         }
     }
 
-    private async Task<ReportSavedRecord> SaveReportRowsAsync(DelayReportRecord report, List<string> uploadedNames,
+    private async Task<ReportSavedRecord> SaveReportRowsAsync(DelayReportRecord report, DelayPhotoStorage photoStorage,
         CancellationToken cancellationToken)
     {
         var statusId = await context.DelayStatus.Where(s => s.Code == DelayStatusCodes.Raised && s.IsActive)
@@ -88,7 +88,9 @@ public partial class DelayAccessor
         await context.SaveChangesAsync(cancellationToken);
         // The delay and cycle now have database identities. Upload before committing
         // so failures roll back the whole report instead of leaving missing photos.
-        var photos = await UploadPhotosAsync(report, delay.Id, uploadedNames, cancellationToken);
+        var workItem = report.BlockingWorkItemId?.ToString() ?? "unassigned";
+        var prefix = $"project-{report.ProjectId}/{report.CreatedAt:yyyy-MM-dd}/work-item-{workItem}/report-{delay.Id}/images";
+        var photos = await photoStorage.UploadAsync(report.Photos, prefix, cancellationToken);
         var activity = NewReportEvent(report, delay, cycle);
         context.ActivityEvents.Add(activity);
         context.DelayPhotos.AddRange(photos.Select(p => NewPhoto(report, p, delay.Id, cycle.DelayCycleId)));
@@ -97,45 +99,6 @@ public partial class DelayAccessor
             ProjectId = report.ProjectId, DelayId = delay.Id, ActivityEventId = activity.Id, CreatedAt = report.CreatedAt }));
         await context.SaveChangesAsync(cancellationToken);
         return new(delay.Id, delay.Number, impacts.Select(i => i.Id).ToList());
-    }
-
-    private async Task<IReadOnlyList<ReportPhotoRecord>> UploadPhotosAsync(DelayReportRecord report, int delayId,
-        List<string> uploadedNames, CancellationToken token)
-    {
-        var storage = Utilities.CreateManager<IAzureBlobStorageUtility>();
-        var workItem = report.BlockingWorkItemId?.ToString() ?? "unassigned";
-        var prefix = $"project-{report.ProjectId}/{report.CreatedAt:yyyy-MM-dd}/work-item-{workItem}/report-{delayId}/images";
-        var result = new List<ReportPhotoRecord>();
-        foreach (var photo in report.Photos)
-            result.Add(await UploadPhotoAsync(storage, photo, prefix, uploadedNames, token));
-        return result;
-    }
-
-    private static async Task<ReportPhotoRecord> UploadPhotoAsync(IAzureBlobStorageUtility storage,
-        ReportPhotoUploadRecord photo, string prefix, List<string> uploadedNames, CancellationToken token)
-    {
-        var id = Guid.NewGuid().ToString("N");
-        var originalName = $"{prefix}/{id}/original";
-        var thumbnailName = $"{prefix}/{id}/thumbnail.jpg";
-        // Include partially successful uploads in failure cleanup.
-        uploadedNames.Add(originalName);
-        uploadedNames.Add(thumbnailName);
-        await using var original = photo.OpenOriginal();
-        var originalUrl = await storage.UploadAsync(originalName, original, photo.ContentType, token);
-        await using var thumbnail = photo.OpenThumbnail();
-        var thumbnailUrl = await storage.UploadAsync(thumbnailName, thumbnail, "image/jpeg", token);
-        return new(originalUrl, thumbnailUrl, photo.FileName, photo.Latitude, photo.Longitude);
-    }
-
-    private async Task CleanUpUploadsAsync(IReadOnlyCollection<string> names)
-    {
-        if (names.Count == 0) return;
-        var storage = Utilities.CreateManager<IAzureBlobStorageUtility>();
-        foreach (var name in names)
-        {
-            try { await storage.DeleteAsync(name, CancellationToken.None); }
-            catch (Exception error) { logger.LogWarning(error, "Could not clean up failed delay upload {BlobName}", name); }
-        }
     }
 
     private static Delay NewDelay(DelayReportRecord r, int statusId) => new()

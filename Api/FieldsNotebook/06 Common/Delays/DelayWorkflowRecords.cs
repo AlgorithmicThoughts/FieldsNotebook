@@ -5,7 +5,6 @@ namespace Common.Delays
     /// The cycle described here is the delay's latest cycle, open or closed.
     /// </summary>
     /// <param name="CycleCount">All cycles of the delay; more than one means the delay was reopened.</param>
-    /// <param name="HasProofOfWorkPhoto">A DelayPhotos row with Purpose ProofOfWork exists for this cycle.</param>
     public sealed record DelayWorkflowState(
         int DelayId,
         int ProjectId,
@@ -18,7 +17,6 @@ namespace Common.Delays
         bool IsCycleAcknowledged,
         int CycleCount,
         DateTimeOffset? ExpectedReadyAt,
-        bool HasProofOfWorkPhoto,
         IReadOnlyList<DelayWorkflowImpactRecord> Impacts);
 
     /// <param name="IsVerifiedInCycle">The affected crew's Foreman already verified this impact in the latest cycle.</param>
@@ -57,10 +55,11 @@ namespace Common.Delays
 
     /// <summary>
     /// One atomic delay workflow write: the status move, the cycle change, an optional handover check,
-    /// the activity event that preserves the action, and one notice per recipient.
+    /// any proof-of-work photos, the activity event that preserves the action, and one notice per recipient.
     /// </summary>
     /// <param name="ToStatusId">Null when the action changes no status, such as a revised completion time.</param>
     /// <param name="RecipientUserIds">Distinct recipients found from crew relationships, never including the actor.</param>
+    /// <param name="ProofOfWorkPhotos">Photos stored against the cycle with Purpose ProofOfWork. Only a resolution carries them.</param>
     public sealed record DelayWorkflowWrite(
         int DelayId,
         int ProjectId,
@@ -73,7 +72,8 @@ namespace Common.Delays
         DelayVerificationChange? Verification,
         DateTimeOffset? OldExpectedReadyAt,
         DateTimeOffset? NewExpectedReadyAt,
-        IReadOnlyList<int> RecipientUserIds);
+        IReadOnlyList<int> RecipientUserIds,
+        IReadOnlyList<ReportPhotoUploadRecord> ProofOfWorkPhotos);
 
     /// <summary>What the committed workflow write produced.</summary>
     public sealed record DelayWorkflowResult(int CycleId, int ActivityEventId, int NoticeCount);

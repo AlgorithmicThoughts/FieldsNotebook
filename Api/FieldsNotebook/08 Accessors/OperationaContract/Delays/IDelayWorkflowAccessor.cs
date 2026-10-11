@@ -21,7 +21,8 @@ namespace Accessors.Delays
 
         /// <summary>
         /// Applies one workflow action in a single transaction: the status move, the cycle change, an
-        /// optional handover check, the activity event, and one notice per recipient.
+        /// optional handover check, any proof-of-work photos, the activity event, and one notice per recipient.
+        /// Uploaded photos are removed again when the transaction fails.
         /// </summary>
         Task<DelayWorkflowResult> ApplyAsync(DelayWorkflowWrite write, CancellationToken cancellationToken);
     }
