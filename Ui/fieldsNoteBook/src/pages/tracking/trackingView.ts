@@ -23,6 +23,7 @@ import {
   canVerifyHandover,
 } from "@/domain/permissions";
 import { coversCrew, type CurrentUser } from "@/domain/users";
+import { verifiableImpacts } from "./delayActionDraft";
 
 /** The delays the toolbar asks for: the active project, or every assigned one. */
 export type TrackingScope = "project" | "all";
@@ -237,8 +238,11 @@ const ACTION_RULES: ActionRule[] = [
     id: "verify",
     label: "Verify handover",
     icon: ClipboardCheck,
+    // A Foreman who already verified every crew they cover has nothing left to check.
     isOffered: (delay, user) =>
-      canVerifyHandover(user, delay) && delay.statusCode === "ReadyForHandover",
+      canVerifyHandover(user, delay) &&
+      delay.statusCode === "ReadyForHandover" &&
+      verifiableImpacts(delay, user).length > 0,
   },
   {
     // A resolve waits for the required checks, never for the estimate alone.
@@ -383,7 +387,9 @@ export function toNextStepNote(delay: DelayDetail, user: CurrentUser): string {
     delay.statusCode === "ReadyForHandover" &&
     canVerifyHandover(user, delay)
   ) {
-    return "Check the finished work on site, then verify the handover for your crew.";
+    return verifiableImpacts(delay, user).length > 0
+      ? "Check the finished work on site, then verify the handover for your crew."
+      : `You verified the handover for your crew. ${delay.ownerCrewName} must resolve this delay.`;
   }
 
   if (delay.statusCode === "ReadyForHandover" && canResolve(user, delay)) {

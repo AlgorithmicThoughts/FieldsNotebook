@@ -32,8 +32,19 @@ public partial class DelayManager
         var plan = new DelayActionPlan(DelayEventTypes.Acknowledged, DelayStatusCodes.Acknowledged,
             DelayCycleChange.Acknowledge(state.CycleId, new DelayAcknowledgmentChange(request.Choice, request.Note), expectedReadyAt),
             null, expectedReadyAt is null ? null : state.ExpectedReadyAt, expectedReadyAt, AffectedCrews(state));
+        var acknowledgment = await CommitAsync(state, plan, userId, cancellationToken);
 
-        return await CommitAsync(state, plan, userId, cancellationToken);
+        if (!DelayAcknowledgmentChoices.IsReadyForHandover(request.Choice))
+        {
+            return acknowledgment;
+        }
+
+        // Nothing remains for the responsible crew, so the same answer asks the affected crews for their
+        // handover checks. Each step keeps its own event, so the history still reads as two actions.
+        var acknowledged = await Workflow.GetWorkflowStateAsync(state.ProjectId, state.DelayId, cancellationToken)
+            ?? throw new DelayNotFoundException(state.DelayId);
+
+        return await CommitAsync(acknowledged, HandoverCheckPlan(acknowledged), userId, cancellationToken);
     }
 
     public async Task<DelayActionResponse> ReviseCompletionTimeAsync(
@@ -65,10 +76,7 @@ public partial class DelayManager
         RequireState(state.StatusCode == DelayStatusCodes.Acknowledged, delayId,
             "a handover check follows an acknowledgment.");
 
-        var plan = new DelayActionPlan(DelayEventTypes.ReadyForHandover, DelayStatusCodes.ReadyForHandover,
-            DelayCycleChange.Touch(state.CycleId), null, null, null, AffectedCrews(state));
-
-        return await CommitAsync(state, plan, userId, cancellationToken);
+        return await CommitAsync(state, HandoverCheckPlan(state), userId, cancellationToken);
     }
 
     public async Task<DelayActionResponse> VerifyHandoverAsync(
@@ -213,6 +221,11 @@ public partial class DelayManager
 
         return contacts.Where(id => id != actorUserId).ToList();
     }
+
+    /// <summary>The move to ReadyForHandover, asked for on its own or by an acknowledgment that needs no work.</summary>
+    private static DelayActionPlan HandoverCheckPlan(DelayWorkflowState state) =>
+        new(DelayEventTypes.ReadyForHandover, DelayStatusCodes.ReadyForHandover,
+            DelayCycleChange.Touch(state.CycleId), null, null, null, AffectedCrews(state));
 
     /// <summary>Every affected crew of the delay. The list is never reduced to one.</summary>
     private static IReadOnlyList<int> AffectedCrews(DelayWorkflowState state) =>

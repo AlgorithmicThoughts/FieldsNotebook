@@ -68,6 +68,29 @@ public class DelayWorkflowManagerTests
     }
 
     [Fact]
+    public async Task AcknowledgeAsync_WorkIsAlreadyReady_AsksForTheHandoverCheckInTheSameAnswer()
+    {
+        GrantAccess(RoleNames.Superintendent, Directs(OwnerCrewId));
+        var writes = new List<DelayWorkflowWrite>();
+        _workflow.Setup(a => a.ApplyAsync(It.IsAny<DelayWorkflowWrite>(), It.IsAny<CancellationToken>()))
+            .Callback<DelayWorkflowWrite, CancellationToken>((write, _) => writes.Add(write))
+            .ReturnsAsync(new DelayWorkflowResult(CycleId, 4900, 1));
+        _workflow.SetupSequence(a => a.GetWorkflowStateAsync(ProjectId, DelayId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(StateOf(DelayStatusCodes.Raised))
+            .ReturnsAsync(StateOf(DelayStatusCodes.Acknowledged) with { IsCycleAcknowledged = true });
+
+        var result = await Manager().AcknowledgeAsync(UserId, ProjectId, DelayId,
+            new AcknowledgeDelayRequest(DelayAcknowledgmentChoices.ReadyForHandover, null, null), CancellationToken.None);
+
+        Assert.Equal((DelayStatusCodes.ReadyForHandover, DelayEventTypes.ReadyForHandover),
+            (result.StatusCode, result.EventType));
+        // Both steps keep their own event, so the history still reads as an acknowledgment and a request.
+        Assert.Equal([DelayEventTypes.Acknowledged, DelayEventTypes.ReadyForHandover], writes.Select(w => w.EventType));
+        Assert.Equal(CycleId, writes[1].Cycle.CycleId);
+        Assert.Null(writes[1].Cycle.Acknowledgment);
+    }
+
+    [Fact]
     public async Task AcknowledgeAsync_ForemanOfOwnerCrew_RefusesBeforeAnyWrite()
     {
         GrantAccess(RoleNames.Foreman, Leads(OwnerCrewId));
