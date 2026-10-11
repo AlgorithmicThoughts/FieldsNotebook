@@ -60,6 +60,7 @@ function OpenDelayModal({
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isReadingPhotos, setIsReadingPhotos] = useState(false)
+  const [isTranscribing, setIsTranscribing] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const savingRef = useRef(false)
   const alive = useRef(false)
@@ -153,7 +154,7 @@ function OpenDelayModal({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (isReadingPhotos || options === null) return
+    if (isReadingPhotos || isTranscribing || options === null) return
     setHasSubmitted(true)
 
     if (!isValid) return
@@ -179,7 +180,7 @@ function OpenDelayModal({
             type="submit"
             form={FORM_ID}
             // A second click must not create a second delay.
-            disabled={isSaving || isReadingPhotos || options === null}
+            disabled={isSaving || isReadingPhotos || isTranscribing || options === null}
           />
         </>
       }
@@ -203,10 +204,11 @@ function OpenDelayModal({
           options={options}
           draft={draft}
           errors={hasSubmitted ? draftErrors : {}}
-          disabled={isSaving}
+          disabled={isSaving || isTranscribing}
           signedInUserId={user.id}
           reporterCrewIds={user.crews.map((crew) => crew.id)}
           onPhotoReadingChange={setIsReadingPhotos}
+          onSpeechProcessingChange={setIsTranscribing}
           onDraftChange={changeDraft}
           onSubmit={handleSubmit}
         />

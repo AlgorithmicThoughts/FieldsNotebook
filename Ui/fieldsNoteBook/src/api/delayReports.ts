@@ -1,4 +1,4 @@
-import type { CreateDelayRequest, DelayFormOptions, DelaySummary } from '@/domain/delays'
+import type { CreateDelayRequest, DelayFormOptions, DelaySpeechResponse, DelaySummary } from '@/domain/delays'
 import { createPhotoThumbnail } from '@/lib/photoThumbnail'
 import { apiGet, apiPostForm } from './client'
 import { ApiError } from './errors'
@@ -7,6 +7,12 @@ import type { RequestOptions } from './types'
 /** One upfront request supplies all the report form's project options. */
 export function getDelayFormOptions(projectId: number, options?: RequestOptions) {
   return apiGet<DelayFormOptions>(`/api/projects/${projectId}/delays/report-options`, options)
+}
+
+export function transcribeDelay(projectId: number, audio: Blob, options?: RequestOptions) {
+  const form = new FormData()
+  form.append('Audio', audio, 'recording.wav')
+  return apiPostForm<DelaySpeechResponse>(`/api/projects/${projectId}/delays/transcribe`, form, options)
 }
 
 function appendFields(form: FormData, fields: Record<string, unknown>) {

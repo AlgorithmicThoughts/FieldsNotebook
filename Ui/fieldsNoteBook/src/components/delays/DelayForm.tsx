@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react'
-import type { DelayFormOptions, NotifyPersonOption } from '@/domain/delays'
+import type { DelayFormOptions, DelaySpeechResponse, NotifyPersonOption } from '@/domain/delays'
 import { CheckboxRow } from '@/components/common/Checkbox'
 import { FormField, FormFieldset } from '@/components/common/Field'
 import { TextArea, TextInput } from '@/components/common/Input'
@@ -53,6 +53,7 @@ interface DelayFormProps {
   signedInUserId: number
   reporterCrewIds: number[]
   onPhotoReadingChange: (reading: boolean) => void
+  onSpeechProcessingChange: (processing: boolean) => void
   onDraftChange: (patch: Partial<DelayDraft>) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
@@ -66,9 +67,18 @@ export function DelayForm({
   signedInUserId,
   reporterCrewIds,
   onPhotoReadingChange,
+  onSpeechProcessingChange,
   onDraftChange,
   onSubmit,
 }: DelayFormProps) {
+  function applySpeech(fields: DelaySpeechResponse) {
+    onDraftChange({
+      ...fields,
+      affectedCrews: draft.affectedCrews.filter((crew) => crew.crewId !== fields.ownerCrewId),
+      blockingWorkItemId: null,
+    })
+  }
+
   const responsibleSuperintendent = superintendentOf(options, draft.ownerCrewId)
   const blockingWorkItems = options.workItems
     .filter((item) => draft.ownerCrewId === null || item.crewIds.includes(draft.ownerCrewId))
@@ -82,7 +92,8 @@ export function DelayForm({
     <form id={formId} onSubmit={onSubmit} noValidate className="grid grid-cols-2 gap-[18px]">
       <fieldset disabled={disabled} className="contents">
       <FormField name="delay-title" label="Delay title" required error={errors.title}
-        className={SPAN_BOTH} action={<DelayRecordingControls disabled={disabled} />}>
+        className={SPAN_BOTH} action={<DelayRecordingControls disabled={disabled}
+          projectId={options.projectId} onTranscribed={applySpeech} onProcessingChange={onSpeechProcessingChange} />}>
         <TextInput autoFocus value={draft.title} maxLength={TITLE_MAX_LENGTH} disabled={disabled}
           onChange={(event) => onDraftChange({ title: event.target.value })} />
       </FormField>

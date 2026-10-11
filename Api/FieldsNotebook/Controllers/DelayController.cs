@@ -9,6 +9,13 @@ namespace FieldsNotebook.Controllers;
 [Route("api/projects/{projectId}/delays")]
 public class DelayController(ManagerFactory managerFactory) : ControllerBase
 {
+    [HttpPost("transcribe")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType<DelaySpeechResponse>(StatusCodes.Status200OK)]
+    public Task<DelaySpeechResponse> TranscribeAsync(int projectId, [FromForm] DelaySpeechRequest request) =>
+        managerFactory.CreateManager<IDelaySpeechManager>().TranscribeAsync(
+            DemoIdentity.GetUserId(HttpContext), projectId, request, HttpContext.RequestAborted);
+
     [HttpGet("report-options")]
     public Task<DelayReportOptionsResponse> GetReportOptionsAsync(int projectId) =>
         managerFactory.CreateManager<IDelayReportManager>().GetReportOptionsAsync(

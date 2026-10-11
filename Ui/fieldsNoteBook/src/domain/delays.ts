@@ -342,3 +342,11 @@ export interface DelayFormOptions {
   siteMap: SiteMapOption | null
   people: NotifyPersonOption[]
 }
+
+/** Editable report fields suggested from a recording. */
+export interface DelaySpeechResponse {
+  title: string
+  description: string
+  ownerCrewId: number | null
+  delayTagId: number | null
+}

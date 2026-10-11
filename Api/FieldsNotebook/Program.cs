@@ -3,6 +3,7 @@ using Managers;
 using Database;
 using FieldsNotebook.Controllers;
 using Microsoft.EntityFrameworkCore;
+using Utilities.Speech;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,8 @@ var connectionString = builder.Configuration.GetConnectionString("FieldNotebook"
 builder.Services.AddDbContext<FieldNotebookContext>(options => options.UseSqlServer(connectionString));
 
 ManagerFactory.RegisterServices(builder.Services);
+builder.Services.AddOptions<SpeechOptions>()
+    .Bind(builder.Configuration.GetSection(SpeechOptions.SectionName));
 
 // Development only: lets the Vite dev server call the API from the browser.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
