@@ -18,6 +18,7 @@ public class ManagerFactory(IServiceProvider services)
         services.AddScoped<ManagerFactory>();
         services.AddScoped<IDelayManager, DelayManager>();
         services.AddScoped<IDelayReportManager, DelayReportManager>();
+        services.AddScoped<IDelaySpeechManager, DelaySpeechManager>();
         services.AddScoped<IUserManager, UserManager>();
         services.AddScoped<IHomeManager, HomeManager>();
         services.AddScoped<INotificationManager, NotificationManager>();
