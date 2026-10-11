@@ -148,6 +148,7 @@ export function SiteMapPage() {
         summary={isSummaryOpen ? selectedDelay : null}
         user={user}
         onClose={() => setIsSummaryOpen(false)}
+        onDelayChanged={() => setReloadCount((count) => count + 1)}
       />
     </>
   )

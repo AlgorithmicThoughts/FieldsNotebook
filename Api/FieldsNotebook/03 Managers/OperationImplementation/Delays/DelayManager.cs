@@ -11,7 +11,7 @@ using Utilities;
 
 namespace Managers.Delays;
 
-public class DelayManager(AccessorFactory accessorFactory, UtilityFactory? Utilities = null) : IDelayManager
+public partial class DelayManager(AccessorFactory accessorFactory, UtilityFactory? Utilities = null) : IDelayManager
 {
     public async Task<TrackingResponse> GetProjectTrackingDetailsAsync(int userId, int projectId, CancellationToken cancellationToken)
     {

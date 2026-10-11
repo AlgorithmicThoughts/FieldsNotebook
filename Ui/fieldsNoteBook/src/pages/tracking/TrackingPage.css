@@ -137,6 +137,25 @@
   margin-top: 7px;
 }
 
+/* The values one action collects, separated from the controls that opened it. */
+.action-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+
+.action-panel .action-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: var(--urgent-bg);
+  color: var(--urgent);
+  font-size: 12px;
+}
+
 .detail-section {
   display: grid;
   gap: 12px;

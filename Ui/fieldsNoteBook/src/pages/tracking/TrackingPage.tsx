@@ -140,6 +140,7 @@ export function TrackingPage() {
         summary={openedDelay}
         user={user}
         onClose={() => setSearchParams({}, { replace: true })}
+        onDelayChanged={() => setReloadCount((count) => count + 1)}
       />
       <AddDelayModal
         open={isReportOpen}
