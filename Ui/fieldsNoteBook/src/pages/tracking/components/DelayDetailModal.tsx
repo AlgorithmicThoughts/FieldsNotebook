@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Building2, CalendarDays, MapPin, Pin } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import { Icon } from '@/components/common/Icon'
@@ -21,9 +22,10 @@ import { DelayPhotoGrid } from './DelayPhotoGrid'
 
 interface DelayDetailBodyProps extends DelayDetailData {
   user: CurrentUser
+  onActionCompleted: () => void
 }
 
-function DelayDetailBody({ delay, siteMap, user }: DelayDetailBodyProps) {
+function DelayDetailBody({ delay, siteMap, user, onActionCompleted }: DelayDetailBodyProps) {
   const status = DELAY_STATUS_DISPLAY[delay.statusCode]
   const currentCycle = delay.cycles.at(-1)
   const pin = delay.pin
@@ -96,6 +98,9 @@ function DelayDetailBody({ delay, siteMap, user }: DelayDetailBodyProps) {
           <DelayNextStep
             note={toNextStepNote(delay, user)}
             offers={toOfferedActions(delay, user)}
+            delay={delay}
+            user={user}
+            onCompleted={onActionCompleted}
           />
         </aside>
       </div>
@@ -108,11 +113,14 @@ interface DelayDetailModalProps {
   summary: DelaySummary | null
   user: CurrentUser
   onClose: () => void
+  /** Tells the tracking list a workflow action changed this delay. */
+  onDelayChanged: () => void
 }
 
 /** One delay in full: its author, cycles, affected crews, photos, and history. */
-export function DelayDetailModal({ summary, user, onClose }: DelayDetailModalProps) {
-  const state = useDelayDetail(summary?.id ?? null, summary?.projectId ?? null)
+export function DelayDetailModal({ summary, user, onClose, onDelayChanged }: DelayDetailModalProps) {
+  const [reloadCount, setReloadCount] = useState(0)
+  const state = useDelayDetail(summary?.id ?? null, summary?.projectId ?? null, reloadCount)
 
   if (summary === null) {
     return null
@@ -138,7 +146,16 @@ export function DelayDetailModal({ summary, user, onClose }: DelayDetailModalPro
         </p>
       )}
 
-      {data === null ? null : <DelayDetailBody {...data} user={user} />}
+      {data === null ? null : (
+        <DelayDetailBody
+          {...data}
+          user={user}
+          onActionCompleted={() => {
+            setReloadCount((count) => count + 1)
+            onDelayChanged()
+          }}
+        />
+      )}
     </Modal>
   )
 }

@@ -9,7 +9,7 @@ using Engines.Delays;
 
 namespace Managers.Delays;
 
-public class DelayManager(AccessorFactory accessorFactory) : IDelayManager
+public partial class DelayManager(AccessorFactory accessorFactory) : IDelayManager
 {
     public async Task<TrackingResponse> GetProjectTrackingDetailsAsync(int userId, int projectId, CancellationToken cancellationToken)
     {

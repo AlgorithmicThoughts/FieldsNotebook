@@ -1,53 +1,56 @@
-import { readAuthSession } from '@/state/authCookie'
-import { ApiError } from './errors'
-import type { RequestOptions } from './types'
+import { readAuthSession } from "@/state/authCookie";
+import { ApiError } from "./errors";
+import type { RequestOptions } from "./types";
 
 /**
  * Artificial latency ceiling in milliseconds. Each call waits a fraction of it
  * so loading states are visible during development. Set to 0 to remove the
  * wait entirely.
  */
-export const MOCK_LATENCY_MS = 400
+export const MOCK_LATENCY_MS = 400;
 
 /** Share of mock calls that fail with a transient error. Set to 0 to disable. */
-export const MOCK_FAILURE_RATE = 0
+export const MOCK_FAILURE_RATE = 0;
 
 function abortError(): DOMException {
-  return new DOMException('Aborted', 'AbortError')
+  return new DOMException("Aborted", "AbortError");
 }
 
 function randomLatencyMs(): number {
-  return Math.round(MOCK_LATENCY_MS * (0.4 + Math.random() * 0.6))
+  return Math.round(MOCK_LATENCY_MS * (0.4 + Math.random() * 0.6));
 }
 
 /** Resolves after the mock latency, or rejects if the caller aborts first. */
 function waitForMockLatency(signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
-      reject(abortError())
-      return
+      reject(abortError());
+      return;
     }
 
     const onAbort = () => {
-      clearTimeout(timer)
-      reject(abortError())
-    }
+      clearTimeout(timer);
+      reject(abortError());
+    };
 
     const timer = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort)
-      resolve()
-    }, randomLatencyMs())
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, randomLatencyMs());
 
-    signal?.addEventListener('abort', onAbort, { once: true })
-  })
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 function failTransiently(): void {
   if (Math.random() >= MOCK_FAILURE_RATE) {
-    return
+    return;
   }
 
-  throw new ApiError(503, 'The request did not reach Field Notebook. Try again.')
+  throw new ApiError(
+    503,
+    "The request did not reach Field Notebook. Try again.",
+  );
 }
 
 /**
@@ -59,43 +62,47 @@ export async function mockRequest<T>(
   options: RequestOptions | undefined,
   produce: () => T,
 ): Promise<T> {
-  await waitForMockLatency(options?.signal)
-  failTransiently()
-  return structuredClone(produce())
+  await waitForMockLatency(options?.signal);
+  failTransiently();
+  return structuredClone(produce());
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 /**
  * Local-development identity until Entra ID sign-in exists. The API reads the
  * user from this header and still checks project, role, and crew itself.
  */
-const DEMO_USER_HEADER = 'X-Demo-User-Id'
+const DEMO_USER_HEADER = "X-Demo-User-Id";
 
-const UNREACHABLE = 'The request did not reach Field Notebook. Try again.'
+const UNREACHABLE = "The request did not reach Field Notebook. Try again.";
 
 function requestHeaders(hasBody: boolean): Record<string, string> {
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  const session = readAuthSession()
+  const headers: Record<string, string> = { Accept: "application/json" };
+  const session = readAuthSession();
 
   if (hasBody) {
-    headers['Content-Type'] = 'application/json'
+    headers["Content-Type"] = "application/json";
   }
 
   if (session !== null) {
-    headers[DEMO_USER_HEADER] = String(session.user.userId)
+    headers[DEMO_USER_HEADER] = String(session.user.userId);
   }
 
-  return headers
+  if (hasBody) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  return headers;
 }
 
 async function problemTitle(response: Response): Promise<string> {
   try {
-    const problem = (await response.json()) as { title?: unknown }
+    const problem = (await response.json()) as { title?: unknown };
 
-    return typeof problem.title === 'string' ? problem.title : UNREACHABLE
+    return typeof problem.title === "string" ? problem.title : UNREACHABLE;
   } catch {
-    return UNREACHABLE
+    return UNREACHABLE;
   }
 }
 
@@ -105,12 +112,12 @@ async function problemTitle(response: Response): Promise<string> {
  * message a page can show as it is.
  */
 async function apiRequest<T>(
-  method: 'GET' | 'POST' | 'PATCH',
+  method: "GET" | "POST" | "PATCH",
   path: string,
   options?: RequestOptions,
   body?: unknown,
 ): Promise<T> {
-  let response: Response
+  let response: Response;
 
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
@@ -118,32 +125,45 @@ async function apiRequest<T>(
       headers: requestHeaders(body !== undefined),
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: options?.signal,
-    })
+    });
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw error
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
     }
 
-    throw new ApiError(503, UNREACHABLE)
+    throw new ApiError(503, UNREACHABLE);
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, await problemTitle(response))
+    throw new ApiError(response.status, await problemTitle(response));
   }
 
-  return (await response.json()) as T
+  return (await response.json()) as T;
 }
 
 export function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
-  return apiRequest<T>('GET', path, options)
+  return apiRequest<T>("GET", path, options);
 }
 
 /** A POST with no body; the route names the action. */
 export function apiPost<T>(path: string, options?: RequestOptions): Promise<T> {
-  return apiRequest<T>('POST', path, options)
+  return apiRequest<T>("POST", path, options);
 }
 
 /** A PATCH whose JSON body carries only the fields being changed. */
-export function apiPatch<T>(path: string, body: unknown, options?: RequestOptions): Promise<T> {
-  return apiRequest<T>('PATCH', path, options, body)
+export function apiPostJson<T>(
+  path: string,
+  body: unknown,
+  options?: RequestOptions,
+): Promise<T> {
+  return apiRequest<T>("POST", path, options, body);
+}
+
+/** A PATCH whose JSON body carries only the fields being changed. */
+export function apiPatch<T>(
+  path: string,
+  body: unknown,
+  options?: RequestOptions,
+): Promise<T> {
+  return apiRequest<T>("PATCH", path, options, body);
 }
