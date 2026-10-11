@@ -32,11 +32,16 @@ final class ReportBlockerMock: ReportBlockerProviding {
         let affected = options.crews.filter { draft.affectedCrewIDs.contains($0.id) }.map(\.name)
         let owner = options.crews.first { $0.id == draft.responsibleCrewID }?.name ?? ""
         let text = draft.description.trimmingCharacters(in: .whitespacesAndNewlines)
-        let summary = HomeDelay(id: "FN-\(nextNumber)", title: String(text.prefix(200)), reason: draft.reason,
+        let summary = HomeDelay(id: "FN-\(nextNumber)", title: reportTitle(draft, fallback: text), reason: draft.reason,
                                 reasonSymbol: BlockerFixtures.reasonSymbol(draft.reason), responsibleCrew: owner,
                                 affectedCrews: affected, location: draft.locationName, status: .blocked)
         let completion = draft.advanceNotice ? "Tentative · " + Self.dateLabel(draft.tentativeCompletion) : "Time not confirmed"
         return DelayRecord(summary: summary, project: project, detail: text, completion: completion)
+    }
+
+    private func reportTitle(_ draft: BlockerDraft, fallback: String) -> String {
+        let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String((title.isEmpty ? fallback : title).prefix(200))
     }
 
     static func dateLabel(_ date: Date) -> String {
