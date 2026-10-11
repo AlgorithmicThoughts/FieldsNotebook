@@ -74,7 +74,7 @@ export function FormField({
         }}
       >
         <div className="flex items-center justify-between gap-3">
-          <FieldLabel htmlFor={id} className={APPROVED_LABEL}>
+          <FieldLabel htmlFor={id} className={`gap-0.5 ${APPROVED_LABEL}`}>
             {label}
             {required ? <span aria-hidden="true">*</span> : null}
           </FieldLabel>
@@ -111,7 +111,7 @@ export function FormFieldset({
       <div className="flex items-center justify-between gap-3">
         <FieldLegend variant="label" className={`mb-0 ${APPROVED_LABEL}`}>
           {legend}
-          {required ? <span aria-hidden="true">*</span> : null}
+          {required ? <span aria-hidden="true" className="ml-0.5">*</span> : null}
         </FieldLegend>
         {action}
       </div>

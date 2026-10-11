@@ -187,16 +187,18 @@ function WorkspaceShell({ user, project, projectSwitch }: WorkspaceProps) {
   const { signOut } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const isFirstRender = useRef(true);
+  const focusedPath = useRef(pathname);
 
-  // Keyboard users land in the new page rather than back in the sidebar.
+  // Keyboard users land in the new page rather than back in the sidebar. Comparing
+  // paths, not a first-render flag, keeps StrictMode's repeated effect from focusing
+  // the page on load, and preventScroll keeps the top bar in view.
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
+    if (focusedPath.current === pathname) {
       return;
     }
 
-    document.getElementById("main")?.focus();
+    focusedPath.current = pathname;
+    document.getElementById("main")?.focus({ preventScroll: true });
   }, [pathname]);
 
   const context: WorkspaceContext = { user, project };

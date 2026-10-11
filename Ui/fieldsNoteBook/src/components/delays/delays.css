@@ -32,6 +32,12 @@
   color: var(--muted);
 }
 
+/* Preflight makes every svg a block; this arrow sits inside the crew sentence. */
+.delay-row .inline-arrow {
+  display: inline-block;
+  vertical-align: -2px;
+}
+
 .delay-symbol {
   display: grid;
   place-items: center;

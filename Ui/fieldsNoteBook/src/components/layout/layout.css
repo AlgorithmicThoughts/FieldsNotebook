@@ -284,3 +284,8 @@
   max-width: 1320px;
   padding: 30px 32px;
 }
+
+/* The page receives focus after navigation only as a starting point; it is not a control. */
+.workspace:focus {
+  outline: none;
+}
