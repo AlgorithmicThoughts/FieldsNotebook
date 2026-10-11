@@ -51,7 +51,7 @@ namespace Tests.Managers
         [InlineData(null, null)]
         public async Task UpdateSettingsAsync_InvalidChange_ThrowsWithoutSaving(string? theme, bool? emailEnabled)
         {
-            await Assert.ThrowsAsync<InvalidUserSettingsException>(() => new UserManager(_userAccessor.Object)
+            await Assert.ThrowsAsync<InvalidRequestException>(() => new UserManager(_userAccessor.Object)
                 .UpdateSettingsAsync(3, new UserSettingsRequest(theme, emailEnabled, null), CancellationToken.None));
 
             VerifyNeverSaved();

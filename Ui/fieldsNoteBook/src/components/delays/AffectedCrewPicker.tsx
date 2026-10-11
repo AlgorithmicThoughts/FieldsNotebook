@@ -8,6 +8,7 @@ interface AffectedCrewPickerProps {
   workItems: WorkItemOption[]
   /** The responsible crew cannot also be blocked by its own work. */
   ownerCrewId: number | null
+  reporterCrewIds: number[]
   value: AffectedCrewDraft[]
   onChange: (next: AffectedCrewDraft[]) => void
 }
@@ -20,6 +21,7 @@ export function AffectedCrewPicker({
   crews,
   workItems,
   ownerCrewId,
+  reporterCrewIds,
   value,
   onChange,
 }: AffectedCrewPickerProps) {
@@ -50,7 +52,7 @@ export function AffectedCrewPicker({
               <CheckboxRow
                 checked={selected !== undefined}
                 onCheckedChange={(checked) => toggleCrew(crew.id, checked)}
-                label={crew.name}
+                label={reporterCrewIds.includes(crew.id) ? `${crew.name} (Your Crew)` : crew.name}
                 detail="Cannot start or continue"
               />
               {selected && options.length > 0 ? (

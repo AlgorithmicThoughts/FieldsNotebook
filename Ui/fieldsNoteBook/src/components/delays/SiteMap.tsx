@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent, type MouseEvent, type RefObject } from 'react'
 import { MapPin } from 'lucide-react'
+import siteImageUrl from '@/assets/sitemap.png'
 import {
   DELAY_STATUS_DISPLAY,
   type DelayPin,
@@ -35,9 +36,6 @@ const MARKER_SHAPE =
 const MARKER_LABEL_SHAPE = 'absolute top-[15px] text-[8px] leading-none font-[850] text-[var(--text)]'
 
 const SURFACE_SHAPE = 'relative w-full overflow-hidden bg-[var(--bg)]'
-
-/** Prototype placeholder until site images come from Azure blob storage. */
-const SITE_IMAGE_URL = '/sitemap.png'
 
 /** One delay that carries a pin on the project's site image. */
 export interface SiteMapPin {
@@ -123,7 +121,6 @@ function PinMarker({ item, isSelected, onSelect }: PinMarkerProps) {
 }
 
 interface SiteMapProps {
-  imageUri?: string
   imageName: string
   /** Delays carrying a pin. */
   pins: SiteMapPin[]
@@ -137,7 +134,6 @@ interface SiteMapProps {
 }
 
 interface MapContentsProps extends Pick<SiteMapProps, 'imageName' | 'pins' | 'selectedDelayNumber' | 'onSelectPin'> {
-  imageUri: string
   imageRef: RefObject<HTMLImageElement | null>
   onImageError: () => void
   editable: boolean
@@ -145,16 +141,16 @@ interface MapContentsProps extends Pick<SiteMapProps, 'imageName' | 'pins' | 'se
   compact: boolean
 }
 
-/** Renders the real project image and its normalized pins. */
+/** Renders the bundled site image and the API's normalized pins. */
 function MapContents({
-  imageName, imageUri, imageRef, onImageError, pins,
+  imageName, imageRef, onImageError, pins,
   selectedDelayNumber, onSelectPin, editable, draftPin, compact,
 }: MapContentsProps) {
   return (
     <>
       <img
         ref={imageRef}
-        src={imageUri}
+        src={siteImageUrl}
         alt={imageName}
         draggable={false}
         onError={onImageError}
@@ -163,7 +159,7 @@ function MapContents({
       <span
         className={`pointer-events-none absolute bottom-3 left-[14px] rounded-[5px] bg-card px-[7px] py-1 text-muted-foreground ${compact ? 'text-[9px]' : 'text-[10px]'}`}
       >
-        {imageUri === SITE_IMAGE_URL ? 'Sample map · Not for layout' : imageName}
+        Sample map · Not for layout
       </span>
       {pins.map((item) => (
         <PinMarker
@@ -187,7 +183,7 @@ function MapContents({
 }
 
 /**
- * The project site image with a pin per delay, shared by the site map page,
+ * The bundled site image with a pin per delay, shared by the site map page,
  * the report form's picker, and a compact read-only view.
  *
  * The image keeps its natural proportions and fills the surface exactly, so
@@ -197,7 +193,6 @@ function MapContents({
  */
 export function SiteMap({
   imageName,
-  imageUri = SITE_IMAGE_URL,
   pins,
   selectedDelayNumber,
   onSelectPin,
@@ -215,6 +210,8 @@ export function SiteMap({
     if (area === undefined || onPlaceDraftPin === undefined) {
       return
     }
+
+    if (area.width === 0 || area.height === 0) return
 
     onPlaceDraftPin({
       x: clamp((event.clientX - area.left) / area.width),
@@ -245,7 +242,6 @@ export function SiteMap({
   const contents = (
     <MapContents
       imageName={imageName}
-      imageUri={imageUri}
       imageRef={imageRef}
       onImageError={() => setIsUnavailable(true)}
       pins={pins}

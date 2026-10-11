@@ -25,9 +25,10 @@ export function canAcknowledge(user: CurrentUser, delay: DelaySummary): boolean 
   return leadsOwnerCrew(user, delay)
 }
 
-/** The responsible Superintendent gives or revises the tentative completion time. */
+/** The responsible Superintendent revises the time after acknowledging the current cycle. */
 export function canSetCompletionTime(user: CurrentUser, delay: DelaySummary): boolean {
-  return leadsOwnerCrew(user, delay)
+  return leadsOwnerCrew(user, delay) &&
+    (delay.statusCode === 'Acknowledged' || delay.statusCode === 'ReadyForHandover')
 }
 
 /** The responsible Superintendent asks the affected crew for a handover check. */

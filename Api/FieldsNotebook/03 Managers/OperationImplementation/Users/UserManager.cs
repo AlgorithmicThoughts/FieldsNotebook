@@ -60,12 +60,12 @@ namespace Managers.Users
         {
             if (request is { ThemePreference: null, EmailEnabled: null, SmsEnabled: null })
             {
-                throw new InvalidUserSettingsException("Choose a setting to change.");
+                throw new InvalidRequestException("Choose a setting to change.");
             }
 
             if (request.ThemePreference is { } theme && !ThemePreferences.IsKnown(theme))
             {
-                throw new InvalidUserSettingsException("Appearance must be System, Light, or Dark.");
+                throw new InvalidRequestException("Appearance must be System, Light, or Dark.");
             }
 
             return new UserSettingsChangeRecord(request.ThemePreference, request.EmailEnabled, request.SmsEnabled);

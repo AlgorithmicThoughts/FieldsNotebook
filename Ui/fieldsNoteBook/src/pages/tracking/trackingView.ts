@@ -369,7 +369,7 @@ export function toNextStepNote(delay: DelayDetail, user: CurrentUser): string {
     (delay.statusCode === "Raised" || delay.statusCode === "Reopened") &&
     canAcknowledge(user, delay)
   ) {
-    return "Speak to your Foreman, then acknowledge this delay.";
+    return "Speak to your Foreman, then acknowledge this delay and give a tentative completion time if work remains.";
   }
 
   if (

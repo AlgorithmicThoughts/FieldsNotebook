@@ -66,23 +66,19 @@ function DelayDetailBody({ delay, siteMap, user, onActionCompleted }: DelayDetai
             </div>
           </div>
 
-          {siteMap !== null && pin !== null && delay.siteMapId === siteMap.id ? (
-            <SiteMap
-              key={siteMap.uri}
-              imageName={siteMap.name}
-              imageUri={siteMap.uri}
-              pins={[
-                {
-                  delayNumber: delay.number,
-                  title: delay.title,
-                  statusCode: delay.statusCode,
-                  pin,
-                },
-              ]}
-              selectedDelayNumber={delay.number}
-              compact
-            />
-          ) : null}
+          <SiteMap
+            imageName={siteMap?.name ?? 'Site map'}
+            pins={pin === null ? [] : [
+              {
+                delayNumber: delay.number,
+                title: delay.title,
+                statusCode: delay.statusCode,
+                pin,
+              },
+            ]}
+            selectedDelayNumber={delay.number}
+            compact
+          />
 
           <DelayImpactList
             impacts={delay.impacts}

@@ -11,6 +11,19 @@ namespace FieldsNotebook.Controllers;
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 public class DelayController(ManagerFactory managerFactory) : ControllerBase
 {
+    [HttpGet("report-options")]
+    public Task<DelayReportOptionsResponse> GetReportOptionsAsync(int projectId) =>
+        managerFactory.CreateManager<IDelayReportManager>().GetReportOptionsAsync(
+            DemoIdentity.GetUserId(HttpContext), projectId, HttpContext.RequestAborted);
+
+    [HttpPost]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(140 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 140 * 1024 * 1024)]
+    public Task<DataContract.Home.DelaySummaryResponse> CreateReportAsync(int projectId, [FromForm] DelayReportRequest request) =>
+        managerFactory.CreateManager<IDelayReportManager>().CreateReportAsync(
+            DemoIdentity.GetUserId(HttpContext), projectId, request, HttpContext.RequestAborted);
+
     [HttpGet(Name = "GetProjectTrackingDetailsAsync")]
     [ProducesResponseType<TrackingResponse>(StatusCodes.Status200OK)]
     public Task<TrackingResponse> GetProjectTrackingDetailsAsync(int projectId) =>

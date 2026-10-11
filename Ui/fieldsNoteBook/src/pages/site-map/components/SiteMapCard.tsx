@@ -22,23 +22,10 @@ export function SiteMapCard({
   selectedDelayNumber,
   onSelectPin,
 }: SiteMapCardProps) {
-  if (siteMap === null) {
-    return (
-      <Card>
-        <CardHeading title="Site map" />
-        <MapEmpty
-          icon={MapPinOff}
-          title="No site image for this project"
-          detail="Delays in this project record a location name instead of a pin."
-        />
-      </Card>
-    )
-  }
-
   return (
     <Card className="overflow-hidden">
       <CardHeading
-        title={siteMap.name}
+        title={siteMap?.name ?? 'Site map'}
         action={
           <Badge
             label={`${pins.length} ${pins.length === 1 ? 'pin' : 'pins'}`}
@@ -48,7 +35,7 @@ export function SiteMapCard({
         }
       />
       <SiteMap
-        imageName={siteMap.name}
+        imageName={siteMap?.name ?? 'Site map'}
         pins={pins}
         selectedDelayNumber={selectedDelayNumber ?? undefined}
         onSelectPin={onSelectPin}

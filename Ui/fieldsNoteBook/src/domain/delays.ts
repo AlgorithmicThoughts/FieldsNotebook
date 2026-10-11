@@ -286,7 +286,8 @@ export interface DelayPhotoUpload {
 /** Everything the API needs to raise a delay in one transaction. */
 export interface CreateDelayRequest {
   projectId: number;
-  /** Delays.Description. Delays.Title follows from it. */
+  title: string;
+  /** Delays.Description. */
   description: string;
   /** Delays.OwnerCrewId, the crew that must remove the blocker. */
   ownerCrewId: number;
@@ -297,8 +298,6 @@ export interface CreateDelayRequest {
   /** Delays.DelayTagId. Exactly one cause, never a status or a priority. */
   delayTagId: number;
   reportType: DelayReportType;
-  /** DelayCycles.ExpectedReadyAt for the first cycle. Tentative, never binding. */
-  expectedReadyAt: string | null;
   /** DelayPhotos rows with Purpose InitialReport. One to five. */
   photos: DelayPhotoUpload[];
   segmentId: number | null;
@@ -364,22 +363,4 @@ export interface DelayFormOptions {
   tags: DelayTagOption[];
   siteMap: SiteMapOption | null;
   people: NotifyPersonOption[];
-}
-
-const TITLE_MAX_LENGTH = 90;
-
-/**
- * Delays.Title is not a form field. It follows the first sentence of the
- * description so a list row still reads as a sentence.
- */
-export function deriveDelayTitle(description: string): string {
-  const text = description.trim().replace(/\s+/g, " ");
-  const sentenceEnd = text.search(/[.!?](\s|$)/);
-  const sentence = sentenceEnd === -1 ? text : text.slice(0, sentenceEnd);
-
-  if (sentence.length <= TITLE_MAX_LENGTH) {
-    return sentence;
-  }
-
-  return `${sentence.slice(0, TITLE_MAX_LENGTH - 1).trimEnd()}…`;
 }

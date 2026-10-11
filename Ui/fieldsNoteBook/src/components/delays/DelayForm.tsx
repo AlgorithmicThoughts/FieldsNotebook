@@ -1,6 +1,5 @@
 import type { FormEvent } from 'react'
 import type { DelayFormOptions, NotifyPersonOption } from '@/domain/delays'
-import { deriveDelayTitle } from '@/domain/delays'
 import { CheckboxRow } from '@/components/common/Checkbox'
 import { FormField, FormFieldset } from '@/components/common/Field'
 import { TextArea, TextInput } from '@/components/common/Input'
@@ -10,10 +9,12 @@ import { NotifyPeopleList } from './NotifyPeopleList'
 import { PhotoPicker } from './PhotoPicker'
 import { ReasonTagGroup } from './ReasonTagGroup'
 import { SiteMap } from './SiteMap'
+import { DelayRecordingControls } from './DelayRecordingControls'
 import {
   DESCRIPTION_MAX_LENGTH,
   LOCATION_NAME_MAX_LENGTH,
   MAX_PHOTOS,
+  TITLE_MAX_LENGTH,
   type DelayDraft,
   type DelayDraftErrors,
 } from './delayDraft'
@@ -26,6 +27,10 @@ function toOption(item: { id: number; name: string }): SelectOption {
 
 function toNumberOrNull(value: string | null): number | null {
   return value === null ? null : Number(value)
+}
+
+function selectionOf(value: number | null): string | null {
+  return value === null ? null : String(value)
 }
 
 function superintendentOf(
@@ -46,6 +51,8 @@ interface DelayFormProps {
   errors: DelayDraftErrors
   disabled: boolean
   signedInUserId: number
+  reporterCrewIds: number[]
+  onPhotoReadingChange: (reading: boolean) => void
   onDraftChange: (patch: Partial<DelayDraft>) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
@@ -57,6 +64,8 @@ export function DelayForm({
   errors,
   disabled,
   signedInUserId,
+  reporterCrewIds,
+  onPhotoReadingChange,
   onDraftChange,
   onSubmit,
 }: DelayFormProps) {
@@ -67,20 +76,21 @@ export function DelayForm({
   const recipients = options.people.filter(
     (person) =>
       person.userId !== signedInUserId && person.userId !== responsibleSuperintendent?.userId,
-  )
+  ).filter((person, index, people) => people.findIndex((p) => p.userId === person.userId) === index)
 
   return (
     <form id={formId} onSubmit={onSubmit} noValidate className="grid grid-cols-2 gap-[18px]">
+      <fieldset disabled={disabled} className="contents">
+      <FormField name="delay-title" label="Delay title" required error={errors.title}
+        className={SPAN_BOTH} action={<DelayRecordingControls disabled={disabled} />}>
+        <TextInput autoFocus value={draft.title} maxLength={TITLE_MAX_LENGTH} disabled={disabled}
+          onChange={(event) => onDraftChange({ title: event.target.value })} />
+      </FormField>
       <FormField
         name="description"
         label="What stops the work?"
         required
         error={errors.description}
-        description={
-          draft.description.trim()
-            ? `This delay will be listed as “${deriveDelayTitle(draft.description)}”.`
-            : 'The first sentence becomes the delay title.'
-        }
         className={SPAN_BOTH}
       >
         <TextArea
@@ -94,7 +104,7 @@ export function DelayForm({
 
       <FormField name="owner-crew" label="Responsible crew" required error={errors.ownerCrew}>
         <SelectField
-          value={draft.ownerCrewId === null ? null : String(draft.ownerCrewId)}
+          value={selectionOf(draft.ownerCrewId)}
           onValueChange={(value) =>
             onDraftChange({
               ownerCrewId: toNumberOrNull(value),
@@ -114,7 +124,7 @@ export function DelayForm({
 
       <FormField name="blocking-work-item" label="Blocking work item">
         <SelectField
-          value={draft.blockingWorkItemId === null ? null : String(draft.blockingWorkItemId)}
+          value={selectionOf(draft.blockingWorkItemId)}
           onValueChange={(value) => onDraftChange({ blockingWorkItemId: toNumberOrNull(value) })}
           options={blockingWorkItems}
           placeholder="Optional"
@@ -134,6 +144,7 @@ export function DelayForm({
           crews={options.crews}
           workItems={options.workItems}
           ownerCrewId={draft.ownerCrewId}
+          reporterCrewIds={reporterCrewIds}
           value={draft.affectedCrews}
           onChange={(affectedCrews) => onDraftChange({ affectedCrews })}
         />
@@ -159,28 +170,10 @@ export function DelayForm({
           checked={draft.isAdvanceNotice}
           onCheckedChange={(isAdvanceNotice) => onDraftChange({ isAdvanceNotice })}
           disabled={disabled}
-          label="Report before the other crew arrives"
-          detail="The affected crew's Superintendent receives the tentative completion time."
+          label="Ask for a tentative resolution time"
+          detail="The responsible crew's Superintendent adds a tentative completion time when acknowledging the delay."
         />
       </div>
-
-      {draft.isAdvanceNotice ? (
-        <FormField
-          name="expected-ready-at"
-          label="Tentative completion"
-          required
-          error={errors.expectedReadyAt}
-          description="An estimate only. The responsible Superintendent confirms it, and the time alone does not clear the blocker."
-          className={SPAN_BOTH}
-        >
-          <TextInput
-            type="datetime-local"
-            value={draft.expectedReadyAt}
-            disabled={disabled}
-            onChange={(event) => onDraftChange({ expectedReadyAt: event.target.value })}
-          />
-        </FormField>
-      ) : null}
 
       <FormFieldset
         name="photos"
@@ -198,15 +191,17 @@ export function DelayForm({
           photos={draft.photos}
           onChange={(photos) => onDraftChange({ photos })}
           disabled={disabled}
+          onReadingChange={onPhotoReadingChange}
         />
       </FormFieldset>
 
-      <FormField name="segment" label="Segment">
+      <FormField name="segment" label="Segment" required error={errors.segment}>
         <SelectField
-          value={draft.segmentId === null ? null : String(draft.segmentId)}
+          value={selectionOf(draft.segmentId)}
           onValueChange={(value) => onDraftChange({ segmentId: toNumberOrNull(value) })}
           options={options.segments.map(toOption)}
-          placeholder="Optional"
+          placeholder="Choose a segment"
+          required
           disabled={disabled}
         />
       </FormField>
@@ -232,19 +227,13 @@ export function DelayForm({
         description="Select the point on the site image. Photo GPS is shown with each photo and never becomes a pin."
         className={SPAN_BOTH}
       >
-        {options.siteMap === null ? (
-          <p className="rounded-[12px] border border-dashed border-input bg-[var(--bg)] p-[18px] text-center text-[12px] text-muted-foreground">
-            No site image is available for this project. Enter a location name instead.
-          </p>
-        ) : (
-          <SiteMap
-            imageName={options.siteMap.name}
-            pins={[]}
-            editable
-            draftPin={draft.pin}
-            onPlaceDraftPin={(pin) => onDraftChange({ pin })}
-          />
-        )}
+        <SiteMap
+          imageName={options.siteMap?.name ?? 'Site map'}
+          pins={[]}
+          editable={!disabled}
+          draftPin={draft.pin}
+          onPlaceDraftPin={(pin) => onDraftChange({ pin })}
+        />
       </FormFieldset>
 
       <FormFieldset
@@ -260,6 +249,7 @@ export function DelayForm({
           onChange={(notifyUserIds) => onDraftChange({ notifyUserIds })}
         />
       </FormFieldset>
+      </fieldset>
     </form>
   )
 }

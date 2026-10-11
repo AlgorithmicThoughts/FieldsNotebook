@@ -32,6 +32,16 @@ namespace FieldsNotebook.Controllers
 
         private static ProblemDetails? ToProblem(Exception exception) => exception switch
         {
+            DelayReportValidationException => new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = exception.Message,
+            },
+            DelayReportForbiddenException => new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = exception.Message,
+            },
             ProjectAccessDeniedException => new ProblemDetails
             {
                 Status = StatusCodes.Status403Forbidden,
@@ -41,6 +51,11 @@ namespace FieldsNotebook.Controllers
             {
                 Status = StatusCodes.Status404NotFound,
                 Title = "That notice is not available in Field Notebook.",
+            },
+            InvalidRequestException => new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = exception.Message,
             },
             DelayNotFoundException => new ProblemDetails
             {
