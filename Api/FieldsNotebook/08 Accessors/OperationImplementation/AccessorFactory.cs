@@ -19,6 +19,7 @@ public class AccessorFactory(IServiceProvider services)
         services.AddScoped<IUserAccessor, UserAccessor>();
         services.AddScoped<IProjectAccessAccessor, ProjectAccessAccessor>();
         services.AddScoped<IDelayAccessor, DelayAccessor>();
+        services.AddScoped<IDelayWorkflowAccessor, DelayWorkflowAccessor>();
         services.AddScoped<IActivityAccessor, ActivityAccessor>();
         services.AddScoped<INotificationAccessor, NotificationAccessor>();
         services.AddScoped<IWorkItemAccessor, WorkItemAccessor>();

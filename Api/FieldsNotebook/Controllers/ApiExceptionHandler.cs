@@ -57,10 +57,33 @@ namespace FieldsNotebook.Controllers
                 Status = StatusCodes.Status400BadRequest,
                 Title = exception.Message,
             },
+            DelayNotFoundException => new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "That delay is not available in Field Notebook.",
+            },
+            DelayActionNotPermittedException => new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = "Your role and crew do not carry authority for this delay action.",
+            },
+            // The delay moved on, or it never stood where this action requires; nothing was written.
+            DelayStateConflictException conflict => new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "This delay cannot take that action right now.",
+                Detail = conflict.Reason,
+            },
+            // ArgumentOutOfRangeException derives from ArgumentException, so it must match first.
             ArgumentOutOfRangeException => new ProblemDetails
             {
                 Status = StatusCodes.Status400BadRequest,
                 Title = "Request IDs must be greater than zero.",
+            },
+            ArgumentException => new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "The request is missing a required value.",
             },
             _ => null,
         };
