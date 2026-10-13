@@ -1,4 +1,4 @@
-using Common.WorkItems;
+using DataContract.Domain.WorkItems;
 
 namespace Accessors.WorkItems
 {

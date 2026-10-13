@@ -18,7 +18,7 @@ export function getDelayFormOptions(projectId: number, options?: RequestOptions)
 export function transcribeDelay(projectId: number, audio: Blob, options?: RequestOptions) {
   const form = new FormData()
   form.append('Audio', audio, 'recording.wav')
-  return apiPostForm<DelaySpeechResponse>(`/api/projects/${projectId}/delays/transcribe`, form, options)
+  return apiPostForm<DelaySpeechResponse>(`/api/projects/${projectId}/delays/transcriptions`, form, options)
 }
 
 function appendFields(form: FormData, fields: Record<string, unknown>) {

@@ -1,4 +1,4 @@
-using Common.Activity;
+using DataContract.Domain.Activity;
 using Database;
 using Microsoft.EntityFrameworkCore;
 

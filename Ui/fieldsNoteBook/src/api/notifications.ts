@@ -1,6 +1,6 @@
 import { describeActivityEvent } from '@/domain/activity'
 import type { NotificationSummary } from '@/domain/notifications'
-import { apiGet, apiPost } from './client'
+import { apiGet, apiPut } from './client'
 import type { RequestOptions } from './types'
 
 /** One notice as the notifications endpoints return it. */
@@ -67,7 +67,7 @@ export async function getProjectNotices(
 }
 
 /**
- * POST /api/projects/{projectId}/notifications/{notificationId}/read — records
+ * PUT /api/projects/{projectId}/notifications/{notificationId}/read — records
  * that this recipient opened this notice. The API takes the recipient from the
  * signed-in identity, and an already read notice keeps its first read time.
  */
@@ -77,7 +77,7 @@ export async function markNotificationRead(
   notificationId: number,
   options?: RequestOptions,
 ): Promise<NoticeRead> {
-  const response = await apiPost<{ notice: NotificationResponse; unreadCount: number }>(
+  const response = await apiPut<{ notice: NotificationResponse; unreadCount: number }>(
     `/api/projects/${projectId}/notifications/${notificationId}/read`,
     options,
   )

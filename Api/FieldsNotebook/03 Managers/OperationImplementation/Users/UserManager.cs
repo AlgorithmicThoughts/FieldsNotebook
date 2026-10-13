@@ -1,91 +1,50 @@
+using Accessors;
 using Accessors.Users;
 using Common.Errors;
-using Common.Users;
+using Common.Results;
+using DataContract.Mapping.ClientToDomainMapping;
+using DataContract.Mapping.DomainToClientMapping;
 using DataContract.Me;
 using DataContract.Users;
 using Engines.Crews;
 
-namespace Managers.Users
+namespace Managers.Users;
+
+public sealed class UserManager(AccessorFactory accessorFactory) : IUserManager
 {
-    public class UserManager(IUserAccessor userAccessor) : IUserManager
+    private readonly IUserAccessor _userAccessor = accessorFactory.CreateAccessor<IUserAccessor>();
+
+    public async Task<Result<UserResponse>> GetUserAsync(int userId, CancellationToken cancellationToken)
     {
-        public async Task<UserResponse?> GetUserAsync(int userId, CancellationToken cancellationToken)
+        var user = await _userAccessor.GetUserAsync(userId, cancellationToken);
+        if (user is null)
         {
-            ArgumentOutOfRangeException.ThrowIfLessThan(userId, 1);
-
-            var user = await userAccessor.GetUserAsync(userId, cancellationToken);
-            return user is null
-                ? null
-                : new UserResponse(user.Id, user.DisplayName, user.Email, user.Phone, user.IsActive);
+            return UserErrors.NotFound(userId);
         }
 
-        public async Task<CurrentUserResponse?> GetCurrentUserAsync(int userId, CancellationToken cancellationToken)
+        return user.ToResponse();
+    }
+
+    public async Task<Result<CurrentUserResponse>> GetCurrentUserAsync(int userId, CancellationToken cancellationToken)
+    {
+        var user = await _userAccessor.GetCurrentUserAsync(userId, cancellationToken);
+        if (user is null)
         {
-            ArgumentOutOfRangeException.ThrowIfLessThan(userId, 1);
-
-            var user = await userAccessor.GetCurrentUserAsync(userId, cancellationToken);
-            if (user is null)
-            {
-                return null;
-            }
-
-            var settings = user.Settings ?? UserSettingsDefaults.Value;
-            return new CurrentUserResponse(
-                user.Id,
-                user.DisplayName,
-                user.Email,
-                user.Phone,
-                settings.ThemePreference,
-                settings.EmailEnabled,
-                settings.SmsEnabled,
-                user.Projects.Select(p => ToProjectResponse(p, user.Crews)).ToList());
+            return UserErrors.NotFound(userId);
         }
 
-        public async Task<UserSettingsResponse?> UpdateSettingsAsync(int userId, UserSettingsRequest request, CancellationToken cancellationToken)
+        return user.ToResponse(CrewCoverageEngine.BuildProjects(user));
+    }
+
+    public async Task<Result<UserSettingsResponse>> UpdateSettingsAsync(int userId, UserSettingsRequest request, CancellationToken cancellationToken)
+    {
+        var user = await _userAccessor.GetUserAsync(userId, cancellationToken);
+        if (user is { IsActive: true })
         {
-            ArgumentOutOfRangeException.ThrowIfLessThan(userId, 1);
-            var change = ToSettingsChange(request);
-
-            var user = await userAccessor.GetUserAsync(userId, cancellationToken);
-            if (user is not { IsActive: true })
-            {
-                return null;
-            }
-
-            var saved = await userAccessor.SaveSettingsAsync(userId, change, cancellationToken);
-            return new UserSettingsResponse(saved.ThemePreference, saved.EmailEnabled, saved.SmsEnabled);
+            var saved = await _userAccessor.SaveSettingsAsync(userId, request.ToDomain(), cancellationToken);
+            return saved.ToResponse();
         }
 
-        private static UserSettingsChangeRecord ToSettingsChange(UserSettingsRequest request)
-        {
-            if (request is { ThemePreference: null, EmailEnabled: null, SmsEnabled: null })
-            {
-                throw new InvalidRequestException("Choose a setting to change.");
-            }
-
-            if (request.ThemePreference is { } theme && !ThemePreferences.IsKnown(theme))
-            {
-                throw new InvalidRequestException("Appearance must be System, Light, or Dark.");
-            }
-
-            return new UserSettingsChangeRecord(request.ThemePreference, request.EmailEnabled, request.SmsEnabled);
-        }
-
-        private static CurrentUserProjectResponse ToProjectResponse(UserProjectRecord project, IReadOnlyList<CrewLeadRecord> crews)
-        {
-            var coveredCrews = CrewCoverageEngine
-                .GetCoveredCrews(project.RoleName, crews.Where(c => c.ProjectId == project.ProjectId))
-                .Select(c => new CrewResponse(c.CrewId, c.Name))
-                .ToList();
-
-            return new CurrentUserProjectResponse(
-                project.ProjectId,
-                project.Name,
-                project.Code,
-                project.DistrictName,
-                project.RoleName,
-                coveredCrews,
-                CrewCoverageEngine.CanReportDelay(project.RoleName, coveredCrews.Count));
-        }
+        return UserErrors.NotFound(userId);
     }
 }

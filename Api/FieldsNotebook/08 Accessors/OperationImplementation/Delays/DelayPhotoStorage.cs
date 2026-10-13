@@ -1,4 +1,5 @@
 using Common.Delays;
+using DataContract.Domain.Delays;
 using Microsoft.Extensions.Logging;
 using Utilities.OperationContract;
 
@@ -21,6 +22,17 @@ internal sealed class DelayPhotoStorage(IAzureBlobStorageUtility storage, ILogge
         return result;
     }
 
+    public async Task CleanUpAsync()
+    {
+        foreach (var name in _attempted)
+        {
+            try { await storage.DeleteAsync(name, CancellationToken.None); }
+            catch (Exception error) { logger.LogWarning(error, "Could not clean up failed delay upload {BlobName}", name); }
+        }
+    }
+
+    #region Private Methods
+
     private async Task<ReportPhotoRecord> UploadPhotoAsync(ReportPhotoUploadRecord photo, string prefix, CancellationToken token)
     {
         var id = Guid.NewGuid().ToString("N");
@@ -36,12 +48,5 @@ internal sealed class DelayPhotoStorage(IAzureBlobStorageUtility storage, ILogge
         return new(originalUrl, thumbnailUrl, photo.FileName, photo.Latitude, photo.Longitude);
     }
 
-    public async Task CleanUpAsync()
-    {
-        foreach (var name in _attempted)
-        {
-            try { await storage.DeleteAsync(name, CancellationToken.None); }
-            catch (Exception error) { logger.LogWarning(error, "Could not clean up failed delay upload {BlobName}", name); }
-        }
-    }
+    #endregion
 }

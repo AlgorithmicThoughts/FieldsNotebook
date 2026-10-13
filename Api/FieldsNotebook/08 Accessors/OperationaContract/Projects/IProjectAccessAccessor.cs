@@ -1,4 +1,4 @@
-using Common.Projects;
+using DataContract.Domain.Projects;
 
 namespace Accessors.Projects
 {

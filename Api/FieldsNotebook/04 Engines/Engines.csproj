@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../02 Data Contract/Data Contract.csproj" />
+    <ProjectReference Include="../08 Accessors/Accessors.csproj" />
     <ProjectReference Include="../06 Common/Common.csproj" />
   </ItemGroup>
 

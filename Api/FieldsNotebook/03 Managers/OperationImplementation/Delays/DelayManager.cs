@@ -1,91 +1,221 @@
 using Accessors;
 using Accessors.Delays;
-using Accessors.Projects;
-using Common.Delays;
+using Accessors.Speech;
 using Common.Errors;
+using Common.Results;
 using DataContract.Delays;
+using DataContract.Domain.Delays;
+using DataContract.Domain.Projects;
 using DataContract.Home;
+using DataContract.Mapping.DomainToClientMapping;
 using Engines.Delays;
-using Utilities.OperationContract;
+using Engines;
+using Engines.Authorization;
 using Utilities;
+using Utilities.OperationContract;
 
 namespace Managers.Delays;
 
-public partial class DelayManager(AccessorFactory accessorFactory, UtilityFactory? Utilities = null) : IDelayManager
+/// <summary>
+/// Orchestrates the delay workflow. Each operation loads what the decision needs, lets an Engine
+/// decide, and hands the outcome to an Accessor; the rules themselves live in the Engines.
+/// Every expected failure is returned in the result. Identifiers arrive already checked by the
+/// API's [PositiveId] attributes; the authorization Engine throws when the user may not see the project.
+/// </summary>
+public sealed class DelayManager(AccessorFactory accessorFactory, UtilityFactory utilityFactory, EngineFactory engineFactory) : IDelayManager
 {
-    public async Task<TrackingResponse> GetProjectTrackingDetailsAsync(int userId, int projectId, CancellationToken cancellationToken)
+    private readonly IAuthorizationEngine _authorizationEngine = engineFactory.CreateEngine<IAuthorizationEngine>();
+    private readonly IDelayAccessor _delayAccessor = accessorFactory.CreateAccessor<IDelayAccessor>();
+    private readonly IDelayWorkflowAccessor _workflowAccessor = accessorFactory.CreateAccessor<IDelayWorkflowAccessor>();
+    private readonly ISpeechAccessor _speechAccessor = accessorFactory.CreateAccessor<ISpeechAccessor>();
+    private readonly IAzureBlobStorageUtility _blobStorage = utilityFactory.CreateUtility<IAzureBlobStorageUtility>();
+
+    public async Task<Result<TrackingResponse>> GetProjectTrackingDetailsAsync(int userId, int projectId, CancellationToken cancellationToken)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(projectId, 1);
-        ArgumentOutOfRangeException.ThrowIfLessThan(userId, 1);
-        var access = await accessorFactory.CreateAccessor<IProjectAccessAccessor>()
-            .GetProjectAccessAsync(userId, projectId, cancellationToken)
-            ?? throw new ProjectAccessDeniedException(projectId);
-        var data = await accessorFactory.CreateAccessor<IDelayAccessor>().GetProjectTrackingDetailsAsync(projectId, cancellationToken);
-        var mapping = new TrackingMapping(data, projectId, access.ProjectName,
-            Utilities?.CreateManager<IAzureBlobStorageUtility>());
-        return new TrackingResponse(projectId, access.ProjectName, data.Delays.Select(mapping.ToDelay).ToList());
+        var access = await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
+        var data = await _delayAccessor.GetProjectTrackingDetailsAsync(projectId, cancellationToken);
+        return DelayTrackingEngine.BuildTracking(data, access, _blobStorage.GetReadUrl);
     }
 
-    private sealed class TrackingMapping
+    public async Task<Result<TrackingDelayResponse>> GetDelayAsync(int userId, int projectId, int delayId, CancellationToken cancellationToken)
     {
-        private readonly int _projectId;
-        private readonly IAzureBlobStorageUtility? _storage;
-        private readonly string _projectName;
-        private readonly ILookup<int, TrackingImpactRecord> _impacts;
-        private readonly ILookup<int, TrackingCycleRecord> _cycles;
-        private readonly ILookup<int, TrackingPhotoRecord> _photos;
-        private readonly ILookup<int, TrackingEventRecord> _events;
-        private readonly ILookup<(int, int), TrackingVerificationRecord> _verifications;
-        private readonly IReadOnlyDictionary<int, TrackingSiteMapRecord> _maps;
-
-        public TrackingMapping(TrackingSet data, int projectId, string projectName, IAzureBlobStorageUtility? storage)
+        var access = await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
+        var data = await _delayAccessor.GetDelayTrackingDetailsAsync(projectId, delayId, cancellationToken);
+        var delay = DelayTrackingEngine.BuildDelays(data, access, _blobStorage.GetReadUrl).SingleOrDefault();
+        if (delay is null)
         {
-            _projectId = projectId;
-            _storage = storage;
-            _projectName = projectName;
-            _impacts = data.Impacts.ToLookup(i => i.DelayId);
-            _cycles = data.Cycles.ToLookup(c => c.DelayId);
-            _photos = data.Photos.ToLookup(p => p.DelayId);
-            _events = data.Events.ToLookup(e => e.DelayId);
-            _verifications = data.Verifications.ToLookup(v => (v.ImpactId, v.CycleId));
-            _maps = data.SiteMaps.ToDictionary(m => m.Id);
+            return DelayErrors.NotFound(delayId);
         }
 
-        public TrackingDelayResponse ToDelay(TrackingDelayRecord row)
-        {
-            var d = row.Summary;
-            var cycles = _cycles[d.DelayId].Select((c, index) => new DelayCycleResponse(c.Id, index + 1, c.CreatedAt,
-                c.OpenReason, c.AcknowledgmentChoice, c.AcknowledgmentNote, c.AcknowledgedAt, c.AcknowledgedByName,
-                c.ExpectedReadyAt, c.ClosedAt)).ToList();
-            var sequence = cycles.ToDictionary(c => c.Id, c => c.Sequence);
-            var currentCycleId = cycles.LastOrDefault()?.Id;
-            return new TrackingDelayResponse(ToSummary(d), d.Description,
-                new DelayReporterResponse(row.ReporterId, row.ReporterName, row.ReporterCrewName, d.CreatedAt),
-                cycles, ToPhotos(d.DelayId), ToImpacts(d.DelayId, currentCycleId),
-                _events[d.DelayId].Select(e => new DelayEventResponse(e.Id, e.EventType, e.ActorName, e.CreatedAt,
-                    sequence.TryGetValue(e.CycleId, out var number) ? number : null, e.OldExpectedReadyAt, e.NewExpectedReadyAt)).ToList(),
-                ToSiteMap(d.SiteMapId));
-        }
-
-        private DelaySummaryResponse ToSummary(ActiveDelayRecord d) =>
-            new(d.DelayId, d.Number, d.Title, d.StatusCode, d.TagCode, d.TagName, d.OwnerCrewName,
-                _impacts[d.DelayId].Select(i => i.CrewName).Distinct().ToList(),
-                _impacts[d.DelayId].Select(i => new DelayImpactResponse(i.Id, i.CrewName, i.WorkItemId)).ToList(),
-                d.LocationName, _projectId, _projectName, DelayRulesEngine.IsHighPriority(d.CycleCount, d.HasOpenCycle),
-                d.ReportType, d.CreatedAt, d.ExpectedReadyAt,
-                d.PinX is { } x && d.PinY is { } y ? new DelayPinResponse(x, y) : null, d.SiteMapId, d.SegmentName);
-
-        private IReadOnlyList<TrackingImpactResponse> ToImpacts(int delayId, int? cycleId) =>
-            _impacts[delayId].Select(i => new TrackingImpactResponse(i.Id, i.CrewName, i.WorkItemId, i.WorkItemTitle,
-                _verifications[(i.Id, cycleId ?? 0)].Select(v => new DelayVerificationResponse(v.VerifiedByName, v.VerifiedAt, v.Note)).ToList())).ToList();
-
-        private IReadOnlyList<DelayPhotoGroupResponse> ToPhotos(int delayId) =>
-            _photos[delayId].GroupBy(p => p.Purpose).Select(g => new DelayPhotoGroupResponse(g.Key,
-                g.Select(p => new DelayPhotoResponse(p.Id, ReadUrl(p.OriginalUrl), ReadUrl(p.ThumbnailUrl), p.FileName, p.CreatedAt, p.Latitude, p.Longitude)).ToList())).ToList();
-
-        private string ReadUrl(string url) => _storage?.GetReadUrl(url) ?? url;
-
-        private TrackingSiteMapResponse? ToSiteMap(int? id) =>
-            id is { } value && _maps.TryGetValue(value, out var map) ? new(map.Id, map.Name, map.Uri) : null;
+        return delay;
     }
+
+    public async Task<Result<DelayReportOptionsResponse>> GetReportOptionsAsync(int userId, int projectId, CancellationToken cancellationToken)
+    {
+        var access = await GetReporterAccessAsync(userId, projectId, cancellationToken);
+        if (access.IsFailure)
+        {
+            return access.Error;
+        }
+
+        var options = await _delayAccessor.GetReportOptionsAsync(projectId, cancellationToken);
+        return options.ToResponse(access.Data);
+    }
+
+    public async Task<Result<DelaySpeechResponse>> TranscribeReportAsync(int userId, int projectId, DelaySpeechRequest request, CancellationToken cancellationToken)
+    {
+        var access = await GetReporterAccessAsync(userId, projectId, cancellationToken);
+        if (access.IsFailure)
+        {
+            return access.Error;
+        }
+
+        var choices = await _delayAccessor.GetReportChoicesAsync(projectId, cancellationToken);
+        await using var audio = request.Audio.OpenReadStream();
+        var transcript = await _speechAccessor.TranscribeAsync(audio, cancellationToken);
+
+        return DelaySpeechEngine.MapFields(transcript, choices);
+    }
+
+    public async Task<Result<DelaySummaryResponse>> RaiseAsync(int userId, int projectId, RaiseDelayRequest request, CancellationToken cancellationToken)
+    {
+        var access = await GetReporterAccessAsync(userId, projectId, cancellationToken);
+        if (access.IsFailure)
+        {
+            return access.Error;
+        }
+
+        var options = await _delayAccessor.GetReportOptionsAsync(projectId, cancellationToken);
+        var write = DelayReportEngine.Raise(userId, projectId, request, options, DateTimeOffset.UtcNow);
+        if (write.IsFailure)
+        {
+            return write.Error;
+        }
+
+        var saved = await _delayAccessor.CreateDelayAsync(write.Data, cancellationToken);
+
+        // No external effects or fallible database reads after a successful commit.
+        return write.Data.ToSummaryResponse(saved, access.Data, options);
+    }
+
+    public async Task<Result<DelayActionResponse>> AcknowledgeAsync(int userId, int projectId, int delayId, AcknowledgeDelayRequest request, CancellationToken cancellationToken)
+    {
+        var context = await LoadWorkflowAsync(userId, projectId, delayId, cancellationToken);
+        if (context.IsFailure)
+        {
+            return context.Error;
+        }
+
+        return await ApplyAsync(DelayWorkflowEngine.Acknowledge(context.Data, request), cancellationToken);
+    }
+
+    public async Task<Result<DelayActionResponse>> ReviseCompletionTimeAsync(int userId, int projectId, int delayId, ReviseCompletionTimeRequest request, CancellationToken cancellationToken)
+    {
+        var context = await LoadWorkflowAsync(userId, projectId, delayId, cancellationToken);
+        if (context.IsFailure)
+        {
+            return context.Error;
+        }
+
+        return await ApplyAsync(DelayWorkflowEngine.ReviseCompletionTime(context.Data, request), cancellationToken);
+    }
+
+    public async Task<Result<DelayActionResponse>> RequestHandoverCheckAsync(int userId, int projectId, int delayId, CancellationToken cancellationToken)
+    {
+        var context = await LoadWorkflowAsync(userId, projectId, delayId, cancellationToken);
+        if (context.IsFailure)
+        {
+            return context.Error;
+        }
+
+        return await ApplyAsync(DelayWorkflowEngine.RequestHandoverCheck(context.Data), cancellationToken);
+    }
+
+    public async Task<Result<DelayActionResponse>> VerifyHandoverAsync(int userId, int projectId, int delayId, int impactId, VerifyHandoverRequest request, CancellationToken cancellationToken)
+    {
+        var context = await LoadWorkflowAsync(userId, projectId, delayId, cancellationToken);
+        if (context.IsFailure)
+        {
+            return context.Error;
+        }
+
+        return await ApplyAsync(DelayWorkflowEngine.VerifyHandover(context.Data, impactId, request), cancellationToken);
+    }
+
+    public async Task<Result<DelayActionResponse>> ResolveAsync(int userId, int projectId, int delayId, ResolveDelayRequest request, CancellationToken cancellationToken)
+    {
+        var context = await LoadWorkflowAsync(userId, projectId, delayId, cancellationToken);
+        if (context.IsFailure)
+        {
+            return context.Error;
+        }
+
+        return await ApplyAsync(DelayWorkflowEngine.Resolve(context.Data, request), cancellationToken);
+    }
+
+    public async Task<Result<DelayActionResponse>> ReopenAsync(int userId, int projectId, int delayId, ReopenDelayRequest request, CancellationToken cancellationToken)
+    {
+        var context = await LoadWorkflowAsync(userId, projectId, delayId, cancellationToken);
+        if (context.IsFailure)
+        {
+            return context.Error;
+        }
+
+        return await ApplyAsync(DelayWorkflowEngine.Reopen(context.Data, request), cancellationToken);
+    }
+
+    public async Task<Result<DelayActionResponse>> RevokeAsync(int userId, int projectId, int delayId, CancellationToken cancellationToken)
+    {
+        var context = await LoadWorkflowAsync(userId, projectId, delayId, cancellationToken);
+        if (context.IsFailure)
+        {
+            return context.Error;
+        }
+
+        return await ApplyAsync(DelayWorkflowEngine.Revoke(context.Data), cancellationToken);
+    }
+
+    #region Private Methods
+
+    private async Task<Result<ProjectAccessRecord>> GetReporterAccessAsync(int userId, int projectId, CancellationToken cancellationToken)
+    {
+        var access = await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
+        if (DelayReportEngine.CheckReporter(access) is { } refused)
+        {
+            return refused;
+        }
+
+        return access;
+    }
+
+    private async Task<Result<DelayWorkflowContext>> LoadWorkflowAsync(int userId, int projectId, int delayId, CancellationToken cancellationToken)
+    {
+        var access = await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
+        var state = await _workflowAccessor.GetWorkflowStateAsync(projectId, delayId, cancellationToken);
+        if (state is null)
+        {
+            return DelayErrors.NotFound(delayId);
+        }
+
+        return new DelayWorkflowContext(userId, access, state, DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>Applies the Engine's writes, or passes its refusal on without touching the database.</summary>
+    private async Task<Result<DelayActionResponse>> ApplyAsync(Result<IReadOnlyList<DelayWorkflowWrite>> planned, CancellationToken cancellationToken)
+    {
+        if (planned.IsFailure)
+        {
+            return planned.Error;
+        }
+
+        var applied = await _workflowAccessor.ApplyAsync(planned.Data, cancellationToken);
+        if (applied.IsFailure)
+        {
+            return applied.Error;
+        }
+
+        return planned.Data[^1].ToResponse(applied.Data);
+    }
+
+    #endregion
 }

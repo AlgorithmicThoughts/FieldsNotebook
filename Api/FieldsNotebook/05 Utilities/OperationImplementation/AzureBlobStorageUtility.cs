@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
@@ -30,11 +31,24 @@ public sealed class AzureBlobStorageUtility(IOptions<AzureBlobStorageOptions> op
 
     public string GetReadUrl(string storedUrl)
     {
-        if (!Uri.TryCreate(storedUrl, UriKind.Absolute, out var uri)) return storedUrl;
-        // Existing external fixture images do not require a storage connection.
-        if (!uri.AbsolutePath.Contains($"/{options.Value.ContainerName}/", StringComparison.Ordinal)) return storedUrl;
-        if (!Container.Uri.IsBaseOf(uri)) return storedUrl;
-        var blobName = Uri.UnescapeDataString(uri.AbsolutePath[(Container.Uri.AbsolutePath.Length + 1)..]);
-        return Container.GetBlobClient(blobName).GenerateSasUri(BlobSasPermissions.Read, DateTimeOffset.UtcNow.AddHours(1)).AbsoluteUri;
+        if (IsInContainer(storedUrl, out var uri))
+        {
+            var blobName = Uri.UnescapeDataString(uri.AbsolutePath[(Container.Uri.AbsolutePath.Length + 1)..]);
+            return Container.GetBlobClient(blobName).GenerateSasUri(BlobSasPermissions.Read, DateTimeOffset.UtcNow.AddHours(1)).AbsoluteUri;
+        }
+
+        return storedUrl;
     }
+
+    #region Private Methods
+
+    // The path is checked before the container, so existing external fixture images do not require a storage connection.
+    private bool IsInContainer(string storedUrl, [NotNullWhen(true)] out Uri? uri)
+    {
+        return Uri.TryCreate(storedUrl, UriKind.Absolute, out uri)
+            && uri.AbsolutePath.Contains($"/{options.Value.ContainerName}/", StringComparison.Ordinal)
+            && Container.Uri.IsBaseOf(uri);
+    }
+
+    #endregion
 }

@@ -1,4 +1,5 @@
 using Common.Delays;
+using DataContract.Domain.Delays;
 
 namespace Engines.Delays
 {
@@ -13,6 +14,6 @@ namespace Engines.Delays
         /// <summary>The delay waits on a handover check by one of the given affected crews in the current cycle.</summary>
         public static bool AwaitsHandoverCheck(string statusCode, IEnumerable<ActiveDelayImpactRecord> impacts, IReadOnlySet<int> crewIds) =>
             statusCode == DelayStatusCodes.ReadyForHandover
-            && impacts.Any(i => crewIds.Contains(i.BlockedCrewId) && !i.IsVerifiedInOpenCycle);
+            && impacts.Any(i => crewIds.Contains(i.BlockedCrewId) && i.IsVerifiedInOpenCycle is false);
     }
 }

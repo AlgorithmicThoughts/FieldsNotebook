@@ -1,59 +1,50 @@
+using Accessors;
 using Accessors.Notifications;
-using Accessors.Projects;
 using Common.Errors;
-using Common.Notifications;
+using Common.Results;
+using DataContract.Domain.Projects;
+using DataContract.Mapping.DomainToClientMapping;
 using DataContract.Notifications;
+using Engines;
+using Engines.Authorization;
 
-namespace Managers.Notifications
+namespace Managers.Notifications;
+
+public sealed class NotificationManager(AccessorFactory accessorFactory, EngineFactory engineFactory) : INotificationManager
 {
-    public class NotificationManager(
-        IProjectAccessAccessor projectAccessAccessor,
-        INotificationAccessor notificationAccessor) : INotificationManager
+    private readonly IAuthorizationEngine _authorizationEngine = engineFactory.CreateEngine<IAuthorizationEngine>();
+    private readonly INotificationAccessor _notificationAccessor = accessorFactory.CreateAccessor<INotificationAccessor>();
+
+    public async Task<Result<UnreadNotificationCountResponse>> GetUnreadCountAsync(int userId, int projectId, CancellationToken cancellationToken)
     {
-        public async Task<UnreadNotificationCountResponse> GetUnreadCountAsync(int userId, int projectId, CancellationToken cancellationToken)
-        {
-            await EnsureProjectAccessAsync(userId, projectId, cancellationToken);
+        await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
 
-            return new UnreadNotificationCountResponse(
-                await notificationAccessor.CountUnreadAsync(userId, projectId, cancellationToken));
+        var unreadCount = await _notificationAccessor.CountUnreadAsync(userId, projectId, cancellationToken);
+        return NotificationDomainToClientMapping.ToUnreadCountResponse(unreadCount);
+    }
+
+    public async Task<Result<NotificationListResponse>> GetNotificationsAsync(int userId, int projectId, CancellationToken cancellationToken)
+    {
+        await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
+
+        var notices = await _notificationAccessor.GetNotificationsAsync(userId, projectId, cancellationToken);
+        return notices.ToListResponse();
+    }
+
+    public async Task<Result<NotificationReadResponse>> MarkReadAsync(int userId, int projectId, int notificationId, CancellationToken cancellationToken)
+    {
+        await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
+
+        // Sequential on purpose: every call shares this request's DbContext.
+        // An already read notice changes nothing and keeps its first ReadAt.
+        await _notificationAccessor.MarkReadAsync(userId, projectId, notificationId, DateTimeOffset.UtcNow, cancellationToken);
+        var notice = await _notificationAccessor.GetNotificationAsync(userId, projectId, notificationId, cancellationToken);
+        if (notice is null)
+        {
+            return NotificationErrors.NotFound(notificationId);
         }
 
-        public async Task<NotificationListResponse> GetNotificationsAsync(int userId, int projectId, CancellationToken cancellationToken)
-        {
-            await EnsureProjectAccessAsync(userId, projectId, cancellationToken);
-
-            var notices = await notificationAccessor.GetNotificationsAsync(userId, projectId, cancellationToken);
-
-            return new NotificationListResponse(
-                notices.Count(n => n.ReadAt is null),
-                notices.Select(ToResponse).ToList());
-        }
-
-        public async Task<NotificationReadResponse> MarkReadAsync(int userId, int projectId, int notificationId, CancellationToken cancellationToken)
-        {
-            ArgumentOutOfRangeException.ThrowIfLessThan(notificationId, 1);
-            await EnsureProjectAccessAsync(userId, projectId, cancellationToken);
-
-            // Sequential on purpose: every call shares this request's DbContext.
-            // An already read notice changes nothing and keeps its first ReadAt.
-            await notificationAccessor.MarkReadAsync(userId, projectId, notificationId, DateTimeOffset.UtcNow, cancellationToken);
-            var notice = await notificationAccessor.GetNotificationAsync(userId, projectId, notificationId, cancellationToken)
-                ?? throw new NotificationNotFoundException(notificationId);
-            var unreadCount = await notificationAccessor.CountUnreadAsync(userId, projectId, cancellationToken);
-
-            return new NotificationReadResponse(ToResponse(notice), unreadCount);
-        }
-
-        private async Task EnsureProjectAccessAsync(int userId, int projectId, CancellationToken cancellationToken)
-        {
-            ArgumentOutOfRangeException.ThrowIfLessThan(userId, 1);
-            ArgumentOutOfRangeException.ThrowIfLessThan(projectId, 1);
-
-            _ = await projectAccessAccessor.GetProjectAccessAsync(userId, projectId, cancellationToken)
-                ?? throw new ProjectAccessDeniedException(projectId);
-        }
-
-        private static NotificationResponse ToResponse(NotificationRecord n) =>
-            new(n.Id, n.DelayId, n.DelayNumber, n.DelayTitle, n.EventType, n.CreatedAt, n.ReadAt);
+        var unreadCount = await _notificationAccessor.CountUnreadAsync(userId, projectId, cancellationToken);
+        return notice.ToReadResponse(unreadCount);
     }
 }

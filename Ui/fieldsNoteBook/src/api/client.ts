@@ -120,7 +120,7 @@ function encodeBody(body: unknown): BodyInit | undefined {
  * message a page can show as it is.
  */
 async function apiRequest<T>(
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PUT" | "PATCH",
   path: string,
   options?: RequestOptions,
   body?: unknown,
@@ -156,6 +156,11 @@ export function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
 /** A POST with no body; the route names the action. */
 export function apiPost<T>(path: string, options?: RequestOptions): Promise<T> {
   return apiRequest<T>("POST", path, options);
+}
+
+/** A PUT with no body; repeating it leaves the same state. */
+export function apiPut<T>(path: string, options?: RequestOptions): Promise<T> {
+  return apiRequest<T>("PUT", path, options);
 }
 
 export function apiPostForm<T>(path: string, body: FormData, options?: RequestOptions): Promise<T> {

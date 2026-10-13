@@ -13,7 +13,7 @@ namespace Utilities
             services.AddScoped<IAzureBlobStorageUtility, AzureBlobStorageUtility>();
         }
 
-        public TInterface CreateManager<TInterface>() where TInterface : class =>
+        public TInterface CreateUtility<TInterface>() where TInterface : class =>
             services.GetRequiredService<TInterface>();
     }
 }

@@ -2,6 +2,7 @@ using Accessors.Activity;
 using Accessors.Delays;
 using Accessors.Notifications;
 using Accessors.Projects;
+using Accessors.Speech;
 using Accessors.Users;
 using Accessors.WorkItems;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +22,7 @@ public class AccessorFactory(IServiceProvider services)
         services.AddScoped<IDelayAccessor, DelayAccessor>();
         services.AddScoped<IDelayWorkflowAccessor, DelayWorkflowAccessor>();
         services.AddScoped<IActivityAccessor, ActivityAccessor>();
+        services.AddScoped<ISpeechAccessor, SpeechAccessor>();
         services.AddScoped<INotificationAccessor, NotificationAccessor>();
         services.AddScoped<IWorkItemAccessor, WorkItemAccessor>();
     }

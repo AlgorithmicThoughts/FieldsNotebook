@@ -1,4 +1,5 @@
 using Common.Users;
+using DataContract.Domain.Users;
 
 namespace Accessors.Users
 {

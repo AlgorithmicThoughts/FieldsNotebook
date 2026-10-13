@@ -1,4 +1,5 @@
 using Common.Users;
+using DataContract.Domain.Users;
 using Database;
 using Database.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -72,6 +73,8 @@ namespace Accessors.Users
                 .SingleAsync(cancellationToken);
         }
 
+        #region Private Methods
+
         private static void SetChangedColumns(UpdateSettersBuilder<UserSettings> setters, UserSettingsChangeRecord change)
         {
             if (change.ThemePreference is { } theme)
@@ -102,5 +105,7 @@ namespace Accessors.Users
             });
             await context.SaveChangesAsync(cancellationToken);
         }
+
+        #endregion
     }
 }

@@ -1,4 +1,5 @@
 using Accessors;
+using Engines;
 using Managers.Delays;
 using Managers.Home;
 using Managers.Notifications;
@@ -15,10 +16,9 @@ public class ManagerFactory(IServiceProvider services)
     public static void RegisterServices(IServiceCollection services)
     {
         AccessorFactory.RegisterServices(services);
+        EngineFactory.RegisterServices(services);
         services.AddScoped<ManagerFactory>();
         services.AddScoped<IDelayManager, DelayManager>();
-        services.AddScoped<IDelayReportManager, DelayReportManager>();
-        services.AddScoped<IDelaySpeechManager, DelaySpeechManager>();
         services.AddScoped<IUserManager, UserManager>();
         services.AddScoped<IHomeManager, HomeManager>();
         services.AddScoped<INotificationManager, NotificationManager>();

@@ -1,5 +1,7 @@
 using Common.Delays;
+using DataContract.Domain.Delays;
 using Common.Errors;
+using Common.Results;
 using Database;
 using Database.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -48,15 +50,112 @@ namespace Accessors.Delays
                 cycleCount, cycle.ExpectedReadyAt, impacts);
         }
 
-        public async Task<int?> GetStatusIdAsync(string statusCode, CancellationToken cancellationToken) =>
-            await context.DelayStatus.AsNoTracking()
-                .Where(s => s.Code == statusCode && s.IsActive)
-                .Select(s => (int?)s.Id)
-                .FirstOrDefaultAsync(cancellationToken);
+        /// <summary>
+        /// One transaction covers every step. Each activity event saves before its notices because the
+        /// generated event ID is their foreign key and the mapping carries no navigation to resolve it.
+        /// Proof-of-work photos upload after the conditional status move, so a concurrent action
+        /// refuses the write before any file is stored, and a later failure removes what was uploaded.
+        /// A refused step rolls the whole action back and returns a conflict; only failures nobody expects throw.
+        /// </summary>
+        public async Task<Result<DelayWorkflowResult>> ApplyAsync(IReadOnlyList<DelayWorkflowWrite> writes, CancellationToken cancellationToken)
+        {
+            if (writes.Count == 0)
+            {
+                throw new ArgumentException("A workflow action applies at least one step.", nameof(writes));
+            }
 
-        public async Task<IReadOnlyList<int>> GetCrewContactsAsync(
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            var photoStorage = writes.Any(w => w.ProofOfWorkPhotos.Count > 0)
+                ? new DelayPhotoStorage(utilities.CreateUtility<IAzureBlobStorageUtility>(), logger)
+                : null;
+            try
+            {
+                DelayWorkflowResult? result = null;
+                foreach (var write in writes)
+                {
+                    result = await ApplyStepAsync(write, photoStorage, cancellationToken);
+                    if (result is null)
+                    {
+                        // Leaving without a commit rolls the transaction back. Clearing the tracker keeps any
+                        // pending entity changes from reaching a later save in the same request scope.
+                        context.ChangeTracker.Clear();
+                        await CleanUpAsync(photoStorage);
+                        return DelayErrors.StateConflict(write.DelayId, "another action changed its status first.");
+                    }
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+                return result!;
+            }
+            catch
+            {
+                await CleanUpAsync(photoStorage);
+                throw;
+            }
+        }
+
+        #region Private Methods
+
+        private static async Task CleanUpAsync(DelayPhotoStorage? photoStorage)
+        {
+            if (photoStorage is not null)
+            {
+                await photoStorage.CleanUpAsync();
+            }
+        }
+
+        /// <returns>Null when the delay is no longer in the status the step names.</returns>
+        private async Task<DelayWorkflowResult?> ApplyStepAsync(
+            DelayWorkflowWrite write, DelayPhotoStorage? photoStorage, CancellationToken cancellationToken)
+        {
+            // The current status may since have been retired, so only the target status must be active.
+            var fromStatusId = await GetStatusIdAsync(write.FromStatusCode, activeOnly: false, cancellationToken);
+            int? toStatusId = write.ToStatusCode is { } toStatusCode
+                ? await GetStatusIdAsync(toStatusCode, activeOnly: true, cancellationToken)
+                : null;
+
+            var cycleId = await SaveCycleAsync(write, cancellationToken);
+            if (await MoveStatusAsync(write, fromStatusId, toStatusId, cancellationToken) is false)
+            {
+                return null;
+            }
+
+            AddVerification(write, cycleId);
+            if (write.ProofOfWorkPhotos.Count > 0)
+            {
+                await AddProofOfWorkAsync(write, cycleId, photoStorage!, cancellationToken);
+            }
+
+            var activityEvent = AddEvent(write, cycleId, fromStatusId, toStatusId);
+            await context.SaveChangesAsync(cancellationToken);
+
+            var noticeCount = await AddNoticesAsync(write, activityEvent.Id, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+
+            return new DelayWorkflowResult(cycleId, activityEvent.Id, noticeCount);
+        }
+
+        private async Task<int> GetStatusIdAsync(string statusCode, bool activeOnly, CancellationToken cancellationToken)
+        {
+            var statuses = context.DelayStatus.AsNoTracking().Where(s => s.Code == statusCode);
+            if (activeOnly)
+            {
+                statuses = statuses.Where(s => s.IsActive);
+            }
+
+            return await statuses.Select(s => (int?)s.Id).FirstOrDefaultAsync(cancellationToken)
+                ?? throw new InvalidOperationException($"Required delay status {statusCode} is not configured.");
+        }
+
+        /// <summary>The active Foremen and Superintendents of the crews who hold access to the project.</summary>
+        private async Task<IReadOnlyList<int>> GetCrewContactsAsync(
             int projectId, IReadOnlyCollection<int> crewIds, CancellationToken cancellationToken)
         {
+            if (crewIds.Count == 0)
+            {
+                return [];
+            }
+
             var crews = context.Crew.AsNoTracking().Where(c => c.ProjectId == projectId && c.IsActive && crewIds.Contains(c.Id));
             var contacts = crews.Select(c => c.ForemanLeadId).Union(crews.Select(c => c.SuperintendentUserId));
 
@@ -68,48 +167,6 @@ namespace Accessors.Delays
                 select up.UserId)
                 .Distinct()
                 .ToListAsync(cancellationToken);
-        }
-
-        /// <summary>
-        /// One transaction covers all of it. The activity event saves before its notices because the
-        /// generated event ID is their foreign key and the mapping carries no navigation to resolve it.
-        /// Proof-of-work photos upload after the conditional status move, so a concurrent action
-        /// refuses the write before any file is stored, and a later failure removes what was uploaded.
-        /// </summary>
-        public async Task<DelayWorkflowResult> ApplyAsync(DelayWorkflowWrite write, CancellationToken cancellationToken)
-        {
-            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-            var photoStorage = write.ProofOfWorkPhotos.Count == 0
-                ? null
-                : new DelayPhotoStorage(utilities.CreateManager<IAzureBlobStorageUtility>(), logger);
-            try
-            {
-                var cycleId = await SaveCycleAsync(write, cancellationToken);
-                await MoveStatusAsync(write, cancellationToken);
-                AddVerification(write, cycleId);
-                if (photoStorage is not null)
-                {
-                    await AddProofOfWorkAsync(write, cycleId, photoStorage, cancellationToken);
-                }
-
-                var activityEvent = AddEvent(write, cycleId);
-                await context.SaveChangesAsync(cancellationToken);
-
-                var noticeCount = AddNotices(write, activityEvent.Id);
-                await context.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-
-                return new DelayWorkflowResult(cycleId, activityEvent.Id, noticeCount);
-            }
-            catch
-            {
-                if (photoStorage is not null)
-                {
-                    await photoStorage.CleanUpAsync();
-                }
-
-                throw;
-            }
         }
 
         private async Task AddProofOfWorkAsync(
@@ -181,21 +238,15 @@ namespace Accessors.Delays
             }
         }
 
-        // Conditional on the status the Manager validated, so a concurrent action cannot be silently overwritten.
-        private async Task MoveStatusAsync(DelayWorkflowWrite write, CancellationToken cancellationToken)
+        // Conditional on the status the Engine validated, so a concurrent action cannot be silently overwritten.
+        // A step that keeps its status still runs the update: it locks the row until commit and refuses a
+        // verification or revision that races a resolve or revoke onto a closed cycle.
+        private async Task<bool> MoveStatusAsync(DelayWorkflowWrite write, int fromStatusId, int? toStatusId, CancellationToken cancellationToken)
         {
-            if (write.ToStatusId is not { } toStatusId)
-            {
-                return;
-            }
-
             var moved = await context.Delays
-                .Where(d => d.Id == write.DelayId && d.DelayStatusId == write.FromStatusId)
-                .ExecuteUpdateAsync(s => s.SetProperty(d => d.DelayStatusId, toStatusId), cancellationToken);
-            if (moved == 0)
-            {
-                throw new DelayStateConflictException(write.DelayId, "another action changed its status first.");
-            }
+                .Where(d => d.Id == write.DelayId && d.DelayStatusId == fromStatusId)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.DelayStatusId, toStatusId ?? fromStatusId), cancellationToken);
+            return moved > 0;
         }
 
         private void AddVerification(DelayWorkflowWrite write, int cycleId)
@@ -216,7 +267,7 @@ namespace Accessors.Delays
             });
         }
 
-        private ActivityEvent AddEvent(DelayWorkflowWrite write, int cycleId)
+        private ActivityEvent AddEvent(DelayWorkflowWrite write, int cycleId, int fromStatusId, int? toStatusId)
         {
             var activityEvent = new ActivityEvent
             {
@@ -226,8 +277,8 @@ namespace Accessors.Delays
                 DelayImpactId = write.Verification?.ImpactId,
                 ActorUserId = write.ActorUserId,
                 EventType = write.EventType,
-                FromDelayStatusId = write.ToStatusId is null ? null : write.FromStatusId,
-                ToDelayStatusId = write.ToStatusId,
+                FromDelayStatusId = toStatusId is null ? null : fromStatusId,
+                ToDelayStatusId = toStatusId,
                 OldExpectedReadyAt = write.OldExpectedReadyAt,
                 NewExpectedReadyAt = write.NewExpectedReadyAt,
                 CreatedAt = write.OccurredAt,
@@ -237,9 +288,13 @@ namespace Accessors.Delays
             return activityEvent;
         }
 
-        private int AddNotices(DelayWorkflowWrite write, int activityEventId)
+        private async Task<int> AddNoticesAsync(DelayWorkflowWrite write, int activityEventId, CancellationToken cancellationToken)
         {
-            foreach (var userId in write.RecipientUserIds)
+            // Read inside the transaction, so the notices match the crews as they stood when the step applied.
+            // The actor never receives a notice of their own action.
+            var contacts = await GetCrewContactsAsync(write.ProjectId, write.RecipientCrewIds, cancellationToken);
+            var recipients = contacts.Where(id => id != write.ActorUserId).ToList();
+            foreach (var userId in recipients)
             {
                 context.Notifications.Add(new Notification
                 {
@@ -251,7 +306,9 @@ namespace Accessors.Delays
                 });
             }
 
-            return write.RecipientUserIds.Count;
+            return recipients.Count;
         }
+
+        #endregion
     }
 }

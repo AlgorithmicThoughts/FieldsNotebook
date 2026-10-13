@@ -1,4 +1,4 @@
-using Common.WorkItems;
+using DataContract.Domain.WorkItems;
 using Database;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +12,7 @@ namespace Accessors.WorkItems
             var workItems = await (
                 from w in context.WorkItems.AsNoTracking()
                 join segment in context.Segments.AsNoTracking() on w.SegmentId equals segment.Id
-                where w.ProjectId == projectId && !w.IsCompleted && w.PlannedStartAt < plannedBeforeUtc
+                where w.ProjectId == projectId && w.IsCompleted == false && w.PlannedStartAt < plannedBeforeUtc
                 orderby w.PlannedStartAt, w.Id
                 select new PlannedWorkItemRecord(w.Id, w.Title, segment.Name, w.PlannedStartAt, w.ExpectedFinishAt))
                 .ToListAsync(cancellationToken);

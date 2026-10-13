@@ -1,4 +1,4 @@
-using Common.Activity;
+using DataContract.Domain.Activity;
 
 namespace Accessors.Activity
 {

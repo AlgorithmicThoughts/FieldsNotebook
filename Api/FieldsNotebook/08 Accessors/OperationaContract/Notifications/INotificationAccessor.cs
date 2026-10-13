@@ -1,4 +1,4 @@
-using Common.Notifications;
+using DataContract.Domain.Notifications;
 
 namespace Accessors.Notifications
 {

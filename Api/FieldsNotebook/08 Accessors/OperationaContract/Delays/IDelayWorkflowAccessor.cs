@@ -1,4 +1,5 @@
-using Common.Delays;
+using Common.Results;
+using DataContract.Domain.Delays;
 
 namespace Accessors.Delays
 {
@@ -10,20 +11,15 @@ namespace Accessors.Delays
         /// </summary>
         Task<DelayWorkflowState?> GetWorkflowStateAsync(int projectId, int delayId, CancellationToken cancellationToken);
 
-        /// <summary>DelayStatus.Id for a status code, or null when the code is not an active status.</summary>
-        Task<int?> GetStatusIdAsync(string statusCode, CancellationToken cancellationToken);
-
         /// <summary>
-        /// The active Foremen and Superintendents of the given crews who hold access to the project,
-        /// as distinct user IDs. This is the recipient pool for a delay notice.
-        /// </summary>
-        Task<IReadOnlyList<int>> GetCrewContactsAsync(int projectId, IReadOnlyCollection<int> crewIds, CancellationToken cancellationToken);
-
-        /// <summary>
-        /// Applies one workflow action in a single transaction: the status move, the cycle change, an
-        /// optional handover check, any proof-of-work photos, the activity event, and one notice per recipient.
+        /// Applies every step of one workflow action in a single transaction: for each step, the status
+        /// move, the cycle change, an optional handover check, any proof-of-work photos, the activity event,
+        /// and one notice per Foreman and Superintendent of the recipient crews, never the actor.
+        /// A step is refused when the delay is no longer in the status it names, so a concurrent action
+        /// cannot be silently overwritten; the refusal comes back as a conflict, not an exception.
         /// Uploaded photos are removed again when the transaction fails.
         /// </summary>
-        Task<DelayWorkflowResult> ApplyAsync(DelayWorkflowWrite write, CancellationToken cancellationToken);
+        /// <returns>What the last step produced, or a conflict when a step was refused and nothing was written.</returns>
+        Task<Result<DelayWorkflowResult>> ApplyAsync(IReadOnlyList<DelayWorkflowWrite> writes, CancellationToken cancellationToken);
     }
 }

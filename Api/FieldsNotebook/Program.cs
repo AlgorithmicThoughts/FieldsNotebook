@@ -2,8 +2,10 @@ using System.Text.Json.Serialization;
 using Managers;
 using Database;
 using FieldsNotebook.Controllers;
+using FieldsNotebook.ErrorHandling;
 using Microsoft.EntityFrameworkCore;
-using Utilities.Speech;
+using Microsoft.AspNetCore.Mvc;
+using Accessors.Speech;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,14 +23,18 @@ builder.Services.AddOptions<SpeechOptions>()
 // Development only: lets the Vite dev server call the API from the browser.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.WithOrigins(allowedOrigins).WithMethods("GET", "POST", "PATCH").WithHeaders(DemoIdentity.HeaderName, "Content-Type")));
+    policy.WithOrigins(allowedOrigins).WithMethods("GET", "POST", "PUT", "PATCH").WithHeaders(DemoIdentity.HeaderName, "Content-Type")));
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
 // Strict numbers keep integer parameters typed as "integer" in OpenAPI; Swagger UI cannot validate ["integer","string"].
 // OpenAPI reads the HTTP JSON options and controllers read the MVC ones, so set both.
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add(new ProducesAttribute("application/json"));
+    })
+    .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = ApiErrorResponse.FromInvalidModelState)
     .AddJsonOptions(options => options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.Strict);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -49,8 +55,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 
-if (!app.Environment.IsDevelopment())
-app.UseHttpsRedirection();
+if (app.Environment.IsDevelopment() is false)
+    app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

@@ -1,34 +1,34 @@
 using DataContract.Me;
-using Managers.Users;
 using Managers;
+using Managers.Users;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FieldsNotebook.Controllers
-{
-    [ApiController]
-    [Route("api/me")]
-    public class MeController(ManagerFactory managerFactory) : ControllerBase
-    {
-        [HttpGet(Name = "GetCurrentUser")]
-        [ProducesResponseType<CurrentUserResponse>(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<CurrentUserResponse>> GetCurrentUser()
-        {
-            var manager = managerFactory.CreateManager<IUserManager>();
-            var user = await manager.GetCurrentUserAsync(DemoIdentity.GetUserId(HttpContext), HttpContext.RequestAborted);
-            return user is null ? NotFound() : user;
-        }
+namespace FieldsNotebook.Controllers;
 
-        [HttpPatch("settings", Name = "UpdateCurrentUserSettings")]
-        [ProducesResponseType<UserSettingsResponse>(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<UserSettingsResponse>> UpdateSettings(UserSettingsRequest request)
-        {
-            var manager = managerFactory.CreateManager<IUserManager>();
-            var settings = await manager.UpdateSettingsAsync(DemoIdentity.GetUserId(HttpContext), request, HttpContext.RequestAborted);
-            return settings is null ? NotFound() : settings;
-        }
+[ApiController]
+[Route("api/me")]
+public class MeController(ManagerFactory managerFactory) : ControllerBase
+{
+    private readonly IUserManager _userManager = managerFactory.CreateManager<IUserManager>();
+
+    [HttpGet(Name = "GetCurrentUser")]
+    [ProducesResponseType<CurrentUserResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CurrentUserResponse>> GetCurrentUser(CancellationToken cancellationToken)
+    {
+        var result = await _userManager.GetCurrentUserAsync(DemoIdentity.GetUserId(HttpContext), cancellationToken);
+
+        return this.ToActionResult(result);
+    }
+
+    [HttpPatch("settings", Name = "UpdateCurrentUserSettings")]
+    [ProducesResponseType<UserSettingsResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserSettingsResponse>> UpdateSettings(UserSettingsRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _userManager.UpdateSettingsAsync(DemoIdentity.GetUserId(HttpContext), request, cancellationToken);
+
+        return this.ToActionResult(result);
     }
 }

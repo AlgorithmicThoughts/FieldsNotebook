@@ -1,4 +1,4 @@
-using Common.Notifications;
+using DataContract.Domain.Notifications;
 using Database;
 using Microsoft.EntityFrameworkCore;
 

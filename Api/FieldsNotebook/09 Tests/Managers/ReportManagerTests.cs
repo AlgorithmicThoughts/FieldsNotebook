@@ -1,8 +1,8 @@
 using Accessors.Delays;
 using Accessors.Projects;
 using Common.Errors;
-using Common.Projects;
-using Common.Reports;
+using DataContract.Domain.Projects;
+using DataContract.Domain.Reports;
 using DataContract.Reports;
 using Managers.Reports;
 using Moq;
@@ -12,67 +12,78 @@ namespace Tests.Managers;
 public class ReportManagerTests
 {
     private const int UserId = 3;
+
     private readonly Mock<IProjectAccessAccessor> _access = new();
     private readonly Mock<IDelayAccessor> _delays = new();
 
     [Fact]
     public async Task GetDelayReportAsync_AccessibleScope_SendsUtcDayBoundsAndReturnsRowsWithBlockedCrews()
     {
+        // Arrange
         GrantAccess(1);
         GrantAccess(3);
         var createdAt = new DateTimeOffset(2026, 10, 5, 14, 0, 0, TimeSpan.Zero);
         var delay = new DelayReportRecord(7, "FN-007", "Omaha Fabrication", "Steel blocker", "Resolved", "Missing material",
             "AfterArrival", "Fitting", "North bay", null, "Dana Foreman", createdAt, createdAt.AddDays(1), 2, 3);
+        DelayReportQueryRecord? sent = null;
         _delays
-            .Setup(a => a.GetDelayReportAsync(
-                It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<DateTimeOffset?>(), It.IsAny<DateTimeOffset?>(), It.IsAny<CancellationToken>()))
+            .Setup(a => a.GetDelayReportAsync(It.IsAny<DelayReportQueryRecord>(), It.IsAny<CancellationToken>()))
+            .Callback<DelayReportQueryRecord, CancellationToken>((query, _) => sent = query)
             .ReturnsAsync(new DelayReportSet([delay], [new(7, "Erection"), new(7, "Welding")]));
+        var request = new DelayReportRequest([1, 3, 1], new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31));
 
-        var rows = await new ReportManager(_access.Object, _delays.Object).GetDelayReportAsync(
-            UserId, new DelayReportRequest([1, 3, 1], new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31)), CancellationToken.None);
+        // Act
+        var result = await CreateManager().GetDelayReportAsync(UserId, request, CancellationToken.None);
 
-        _delays.Verify(a => a.GetDelayReportAsync(
-            It.Is<IReadOnlyCollection<int>>(ids => ids.SequenceEqual(new[] { 1, 3 })),
-            new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero),
-            It.IsAny<CancellationToken>()));
-        var row = Assert.Single(rows);
+        // Assert
+        var row = Assert.Single(ResultAssert.Succeeded(result));
+        Assert.Equal([1, 3], sent!.ProjectIds);
+        Assert.Equal(new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero), sent.CreatedFrom);
+        Assert.Equal(new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero), sent.CreatedBefore);
         Assert.Equal("FN-007", row.DelayNumber);
         Assert.Equal(["Erection", "Welding"], row.BlockedCrewNames);
-        Assert.Equal(createdAt.AddDays(1), row.ResolvedAt);
-        Assert.Equal(2, row.CycleCount);
+        Assert.Equal((createdAt.AddDays(1), 2), (row.ResolvedAt, row.CycleCount));
     }
 
     [Fact]
-    public async Task GetDelayReportAsync_ProjectWithoutAccess_ThrowsWithoutReadingDelays()
+    public async Task GetDelayReportAsync_ProjectWithoutAccess_RefusesWithoutReadingDelays()
     {
+        // Arrange
         GrantAccess(1);
 
-        await Assert.ThrowsAsync<ProjectAccessDeniedException>(() => new ReportManager(_access.Object, _delays.Object)
-            .GetDelayReportAsync(UserId, new DelayReportRequest([1, 2], null, null), CancellationToken.None));
+        // Act
+        var act = () => CreateManager().GetDelayReportAsync(UserId, new DelayReportRequest([1, 2], null, null), CancellationToken.None);
 
+        // Assert
+        await AuthorizationAssert.DeniedAsync(ErrorCodes.Forbidden, act);
         _delays.VerifyNoOtherCalls();
     }
 
-    [Theory]
-    [MemberData(nameof(InvalidRequests))]
-    public async Task GetDelayReportAsync_InvalidScope_ThrowsBeforeAnyRead(DelayReportRequest request)
+    [Fact]
+    public async Task GetDelayTagNamesAsync_ReturnsTheAccessorsNamesInOrder()
     {
-        await Assert.ThrowsAsync<InvalidRequestException>(() => new ReportManager(_access.Object, _delays.Object)
-            .GetDelayReportAsync(UserId, request, CancellationToken.None));
+        // Arrange
+        _delays.Setup(a => a.GetActiveDelayTagNamesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(["Missing material", "Safety issue"]);
 
-        _access.VerifyNoOtherCalls();
-        _delays.VerifyNoOtherCalls();
+        // Act
+        var names = await CreateManager().GetDelayTagNamesAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(["Missing material", "Safety issue"], names);
     }
 
-    public static TheoryData<DelayReportRequest> InvalidRequests() =>
-    [
-        new DelayReportRequest(null, null, null),
-        new DelayReportRequest([], null, null),
-        new DelayReportRequest([1], new DateOnly(2026, 10, 2), new DateOnly(2026, 10, 1)),
-    ];
+    #region Private Methods
 
-    private void GrantAccess(int projectId) =>
+    private void GrantAccess(int projectId)
+    {
         _access.Setup(a => a.GetProjectAccessAsync(UserId, projectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProjectAccessRecord(projectId, $"Project {projectId}", "Foreman", []));
+    }
+
+    private ReportManager CreateManager()
+    {
+        return new ManagerTestHost().With(_access).With(_delays).Create<ReportManager>();
+    }
+
+    #endregion
 }

@@ -1,5 +1,6 @@
-using Common.Projects;
+using DataContract.Domain.Projects;
 using Common.Users;
+using DataContract.Domain.Users;
 using Database;
 using Microsoft.EntityFrameworkCore;
 
