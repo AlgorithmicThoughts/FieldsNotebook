@@ -7,7 +7,7 @@ namespace DataContract.Domain.Delays;
 /// </summary>
 /// <param name="FromStatusCode">The status the Engine validated. The write is refused if the delay has since moved.</param>
 /// <param name="ToStatusCode">Null when the step changes no status, such as a revised completion time.</param>
-/// <param name="RecipientCrewIds">The crews whose Foremen and Superintendents this step notifies; never the actor.</param>
+/// <param name="RecipientUserIds">The users this step notifies, decided by the workflow Engine; never the actor.</param>
 public sealed record DelayWorkflowWrite(
     int DelayId,
     int ProjectId,
@@ -17,7 +17,7 @@ public sealed record DelayWorkflowWrite(
     string FromStatusCode,
     string? ToStatusCode,
     DelayCycleChange Cycle,
-    IReadOnlyList<int> RecipientCrewIds)
+    IReadOnlyList<int> RecipientUserIds)
 {
     /// <summary>Only a handover verification carries one.</summary>
     public DelayVerificationChange? Verification { get; init; }
@@ -26,7 +26,10 @@ public sealed record DelayWorkflowWrite(
 
     public DateTimeOffset? NewExpectedReadyAt { get; init; }
 
-    /// <summary>Photos stored against the cycle with Purpose ProofOfWork. Only a resolution carries them.</summary>
+    /// <summary>
+    /// Uploads to store against the cycle with Purpose ProofOfWork. Only a resolution carries them; the Manager
+    /// stores them before the write and hands the Accessor the stored copies.
+    /// </summary>
     public IReadOnlyList<ReportPhotoUploadRecord> ProofOfWorkPhotos { get; init; } = [];
 
     /// <summary>Where the delay stands once this step is applied.</summary>

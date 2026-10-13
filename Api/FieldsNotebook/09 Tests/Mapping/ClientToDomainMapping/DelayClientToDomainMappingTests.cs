@@ -87,8 +87,25 @@ public class DelayClientToDomainMappingTests
         // Assert
         var photo = Assert.Single(records);
         Assert.Equal(("evidence.jpg", "image/jpeg", 41m, -96m), (photo.FileName, photo.ContentType, photo.Latitude, photo.Longitude));
+        Assert.Equal((3L, "image/jpeg", 3L), (photo.Length, photo.ThumbnailContentType, photo.ThumbnailLength));
         using var original = photo.OpenOriginal();
         Assert.Equal(3, original.Length);
+    }
+
+    [Fact]
+    public void ToDomain_PhotoWithoutFiles_MapsAsEmptySoThePhotoRulesRefuseIt()
+    {
+        // Arrange
+        List<DelayReportPhoto> photos = [new() { File = null!, Thumbnail = null! }];
+
+        // Act
+        var records = photos.ToDomain();
+
+        // Assert
+        var photo = Assert.Single(records);
+        Assert.Equal((0L, 0L, "", ""), (photo.Length, photo.ThumbnailLength, photo.ContentType, photo.FileName));
+        using var original = photo.OpenOriginal();
+        Assert.Equal(0, original.Length);
     }
 
     [Fact]
@@ -117,6 +134,8 @@ public class DelayClientToDomainMappingTests
         Assert.Empty(records);
     }
 
+    #region Private Test Helper
+
     private static FormFile Upload(string name, string contentType)
     {
         return new FormFile(new MemoryStream([1, 2, 3]), 0, 3, "photo", name)
@@ -125,4 +144,6 @@ public class DelayClientToDomainMappingTests
             ContentType = contentType,
         };
     }
+
+    #endregion
 }

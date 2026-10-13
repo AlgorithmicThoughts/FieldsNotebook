@@ -143,8 +143,12 @@ public class RequestValidationTests
         Assert.Equal("Audio is required.", Assert.Single(errors).ErrorMessage);
     }
 
+    #region Private Test Helper
+
     private static IReadOnlyList<ValidationResult> Validate(IValidatableObject request)
     {
         return request.Validate(new ValidationContext(request)).ToList();
     }
+
+    #endregion
 }

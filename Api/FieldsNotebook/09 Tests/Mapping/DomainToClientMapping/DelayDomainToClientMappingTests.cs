@@ -222,6 +222,8 @@ public class DelayDomainToClientMappingTests
         Assert.Null(pin);
     }
 
+    #region Private Test Helper
+
     private static ActiveDelayRecord ActiveDelay()
     {
         return new ActiveDelayRecord(7, "FN-007", "Steel blocker", "Missing steel", DelayStatusCodes.Raised, "MissingMaterial",
@@ -231,7 +233,7 @@ public class DelayDomainToClientMappingTests
     private static RaiseDelayWrite RaisedDelay(IReadOnlyList<ReportImpactRecord> impacts, string? locationName)
     {
         return new RaiseDelayWrite(1, 3, 2, "Steel missing", "Missing steel stops welding", 1, 1, DelayReportTypes.AfterArrival, null,
-            2, null, null, null, "ManualEntry", locationName, CreatedAt, impacts, [], [10]);
+            2, null, null, null, DelayLocationSources.ManualEntry, locationName, CreatedAt, impacts, [], [10], DelayEventTypes.Raised);
     }
 
     private static DelayReportOptionsRecord ReportOptions()
@@ -240,4 +242,6 @@ public class DelayDomainToClientMappingTests
             [new(1, "Steel", 4, 10), new(2, "Welding", 3, 11), new(3, "Coatings", 5, 12)],
             [], [new ReportSegmentRecord(2, "Bay 4")], [new ReportTagRecord(1, "MissingMaterial", "Missing material")], null, []);
     }
+
+    #endregion
 }

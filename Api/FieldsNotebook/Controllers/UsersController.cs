@@ -18,7 +18,7 @@ public class UsersController(ManagerFactory managerFactory) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserResponse>> GetUser([PositiveId] int userId, CancellationToken cancellationToken)
     {
-        var result = await _userManager.GetUserAsync(userId, cancellationToken);
+        var result = await _userManager.GetUserAsync(DemoIdentity.GetUserId(HttpContext), userId, cancellationToken);
 
         return this.ToActionResult(result);
     }

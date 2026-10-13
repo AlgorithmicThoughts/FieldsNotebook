@@ -21,12 +21,13 @@ namespace FieldsNotebook.Controllers;
 public class DelaysController(ManagerFactory managerFactory) : ControllerBase
 {
     private readonly IDelayManager _delayManager = managerFactory.CreateManager<IDelayManager>();
+    private readonly IDelayInsightManager _insightManager = managerFactory.CreateManager<IDelayInsightManager>();
 
     [HttpGet(Name = "GetDelays")]
     [ProducesResponseType<TrackingResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<TrackingResponse>> GetDelays([PositiveId] int projectId, CancellationToken cancellationToken)
     {
-        var result = await _delayManager.GetProjectTrackingDetailsAsync(DemoIdentity.GetUserId(HttpContext), projectId, cancellationToken);
+        var result = await _insightManager.GetProjectTrackingDetailsAsync(DemoIdentity.GetUserId(HttpContext), projectId, cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -36,7 +37,7 @@ public class DelaysController(ManagerFactory managerFactory) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TrackingDelayResponse>> GetDelay([PositiveId] int projectId, [PositiveId] int delayId, CancellationToken cancellationToken)
     {
-        var result = await _delayManager.GetDelayAsync(DemoIdentity.GetUserId(HttpContext), projectId, delayId, cancellationToken);
+        var result = await _insightManager.GetDelayAsync(DemoIdentity.GetUserId(HttpContext), projectId, delayId, cancellationToken);
 
         return this.ToActionResult(result);
     }

@@ -7,11 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.30.0" />
     <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.51.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../05 Utilities/Utilities.csproj" />
     <ProjectReference Include="../02 Data Contract/Data Contract.csproj" />
     <ProjectReference Include="../06 Common/Common.csproj" />
     <ProjectReference Include="../07 Database/Database.csproj" />

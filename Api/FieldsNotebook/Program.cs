@@ -1,24 +1,24 @@
 using System.Text.Json.Serialization;
 using Managers;
-using Database;
 using FieldsNotebook.Controllers;
 using FieldsNotebook.ErrorHandling;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
-using Accessors.Speech;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-// Supply the value through user-secrets or an environment variable; never commit it.
-var connectionString = builder.Configuration.GetConnectionString("FieldNotebook")
-    ?? throw new InvalidOperationException("Connection string 'FieldNotebook' is not configured.");
-builder.Services.AddDbContext<FieldNotebookContext>(options => options.UseSqlServer(connectionString));
+// Supply ApplicationInsights:ConnectionString through user-secrets or APPLICATIONINSIGHTS_CONNECTION_STRING; never commit it.
+// Without one, ILogger output stays on the console so local runs do not need an Application Insights resource.
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]
+    ?? builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+if (string.IsNullOrWhiteSpace(appInsightsConnectionString) is false)
+{
+    builder.Services.AddApplicationInsightsTelemetry(options => options.ConnectionString = appInsightsConnectionString);
+}
 
-ManagerFactory.RegisterServices(builder.Services);
-builder.Services.AddOptions<SpeechOptions>()
-    .Bind(builder.Configuration.GetSection(SpeechOptions.SectionName));
+// Managers register every layer below them, including the database and the storage and speech services.
+ManagerFactory.RegisterServices(builder.Services, builder.Configuration);
 
 // Development only: lets the Vite dev server call the API from the browser.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

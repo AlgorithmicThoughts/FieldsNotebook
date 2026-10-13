@@ -4,21 +4,21 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <DefaultItemExcludes>$(DefaultItemExcludes);02 Data Contract/**;03 Managers/**;04 Engines/**;05 Utilities/**;06 Common/**;07 Database/**;08 Accessors/**;09 Tests/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);01 Client Contract/**;02 Data Contract/**;03 Managers/**;04 Engines/**;05 Utilities/**;06 Common/**;07 Database/**;08 Accessors/**;09 Tests/**</DefaultItemExcludes>
     <UserSecretsId>c07fc7b9-0e9a-4ea0-aa04-0c1e0396c027</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="3.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
     <PackageReference Include="Microsoft.OpenApi" Version="2.12.2" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.0.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="02 Data Contract/Data Contract.csproj" />
+    <!-- The client knows only Managers and the client contracts; Managers register everything below them. -->
+    <ProjectReference Include="01 Client Contract/Client Contract.csproj" />
     <ProjectReference Include="03 Managers/Managers.csproj" />
-    <ProjectReference Include="07 Database/Database.csproj" />
-    <ProjectReference Include="08 Accessors/Accessors.csproj" />
   </ItemGroup>
 
 </Project>

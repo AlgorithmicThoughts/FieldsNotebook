@@ -128,6 +128,8 @@ public class UserDomainToClientMappingTests
         Assert.Equal(new UserSettingsResponse("Light", true, true), response);
     }
 
+    #region Private Test Helper
+
     private static CurrentUserRecord CurrentUser(UserSettingsRecord? settings)
     {
         return new CurrentUserRecord(3, "Demo User", "demo@example.com", null, settings, [], []);
@@ -137,4 +139,6 @@ public class UserDomainToClientMappingTests
     {
         return new UserProjectRecord(1, "Omaha Fabrication", "OMA-FAB", "Northern Plains", "Foreman");
     }
+
+    #endregion
 }

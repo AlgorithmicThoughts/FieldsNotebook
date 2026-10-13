@@ -1,7 +1,7 @@
 using DataContract.Home;
 using DataContract.Validation;
 using Managers;
-using Managers.Home;
+using Managers.Delays;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FieldsNotebook.Controllers;
@@ -10,7 +10,7 @@ namespace FieldsNotebook.Controllers;
 [Route("api/projects/{projectId:int}/home")]
 public class HomeController(ManagerFactory managerFactory) : ControllerBase
 {
-    private readonly IHomeManager _homeManager = managerFactory.CreateManager<IHomeManager>();
+    private readonly IDelayInsightManager _insightManager = managerFactory.CreateManager<IDelayInsightManager>();
 
     [HttpGet(Name = "GetProjectHome")]
     [ProducesResponseType<HomeResponse>(StatusCodes.Status200OK)]
@@ -18,7 +18,7 @@ public class HomeController(ManagerFactory managerFactory) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<HomeResponse>> GetHome([PositiveId] int projectId, CancellationToken cancellationToken)
     {
-        var result = await _homeManager.GetHomeAsync(DemoIdentity.GetUserId(HttpContext), projectId, cancellationToken);
+        var result = await _insightManager.GetHomeAsync(DemoIdentity.GetUserId(HttpContext), projectId, cancellationToken);
 
         return this.ToActionResult(result);
     }

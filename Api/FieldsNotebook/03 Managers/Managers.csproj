@@ -7,9 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../05 Utilities/Utilities.csproj" />
+    <ProjectReference Include="../01 Client Contract/Client Contract.csproj" />
     <ProjectReference Include="../02 Data Contract/Data Contract.csproj" />
     <ProjectReference Include="../04 Engines/Engines.csproj" />
+    <ProjectReference Include="../05 Utilities/Utilities.csproj" />
     <ProjectReference Include="../06 Common/Common.csproj" />
     <ProjectReference Include="../08 Accessors/Accessors.csproj" />
   </ItemGroup>

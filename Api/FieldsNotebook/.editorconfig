@@ -1,0 +1,3 @@
+[*.cs]
+# One namespace style across every layer.
+csharp_style_namespace_declarations = file_scoped:warning

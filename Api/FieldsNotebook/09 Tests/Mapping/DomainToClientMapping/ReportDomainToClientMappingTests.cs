@@ -64,9 +64,13 @@ public class ReportDomainToClientMappingTests
         Assert.Empty(rows);
     }
 
+    #region Private Test Helper
+
     private static DelayReportRecord Delay(int id, string number)
     {
         return new DelayReportRecord(id, number, "Omaha Fabrication", "Steel blocker", "Resolved", "Missing material",
             "AfterArrival", "Fitting", "North bay", null, "Dana Foreman", CreatedAt, CreatedAt.AddDays(1), 2, 3);
     }
+
+    #endregion
 }

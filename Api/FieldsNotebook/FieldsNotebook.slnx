@@ -1,6 +1,6 @@
 <Solution>
   <Project Path="FieldsNotebook.csproj" />
-  <Folder Name="/02 Data Contract/" />
+  <Project Path="01 Client Contract/Client Contract.csproj" />
   <Project Path="02 Data Contract/Data Contract.csproj" />
   <Project Path="03 Managers/Managers.csproj" />
   <Project Path="04 Engines/Engines.csproj" />

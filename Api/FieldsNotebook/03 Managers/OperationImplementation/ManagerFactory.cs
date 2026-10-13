@@ -1,31 +1,29 @@
 using Accessors;
 using Engines;
 using Managers.Delays;
-using Managers.Home;
 using Managers.Notifications;
-using Managers.Reports;
-using Managers.Upcoming;
 using Managers.Users;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Utilities;
 
 namespace Managers;
 
-/// <summary>Registers and resolves manager interfaces within the current request scope.</summary>
+/// <summary>Registers every layer below the client, and resolves manager interfaces within the current request scope.</summary>
 public class ManagerFactory(IServiceProvider services)
 {
-    public static void RegisterServices(IServiceCollection services)
+    public static void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
-        AccessorFactory.RegisterServices(services);
+        UtilityFactory.RegisterServices(services);
+        AccessorFactory.RegisterServices(services, configuration);
         EngineFactory.RegisterServices(services);
         services.AddScoped<ManagerFactory>();
         services.AddScoped<IDelayManager, DelayManager>();
+        services.AddScoped<IDelayInsightManager, DelayInsightManager>();
         services.AddScoped<IUserManager, UserManager>();
-        services.AddScoped<IHomeManager, HomeManager>();
         services.AddScoped<INotificationManager, NotificationManager>();
-        services.AddScoped<IUpcomingManager, UpcomingManager>();
-        services.AddScoped<IReportManager, ReportManager>();
     }
 
-    public TInterface CreateManager<TInterface>() where TInterface : class =>
+    public TInterface CreateManager<TInterface>() where TInterface : class, IManager =>
         services.GetRequiredService<TInterface>();
 }

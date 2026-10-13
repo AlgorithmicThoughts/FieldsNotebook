@@ -62,8 +62,12 @@ public class NotificationDomainToClientMappingTests
         Assert.Equal((12, CreatedAt.AddHours(1), 4), (read.Notice.Id, read.Notice.ReadAt, read.UnreadCount));
     }
 
+    #region Private Test Helper
+
     private static NotificationRecord Notice(int id, DateTimeOffset? readAt)
     {
         return new NotificationRecord(id, 1, "FN-1042", "Primer not cured", "delay.raised", CreatedAt, readAt);
     }
+
+    #endregion
 }
