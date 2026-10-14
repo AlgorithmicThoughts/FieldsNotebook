@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Diagnostics;
 
 namespace FieldsNotebook.ErrorHandling;
 
-/// <summary>Writes the shared error shape for rejected requests and failures no Manager expected; expected ones, refused access included, arrive as results.</summary>
+/// <summary>Writes the shared error shape for refused authorization and for failures no Manager expected; expected ones arrive as results.</summary>
 public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
@@ -34,6 +34,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
     {
         return exception switch
         {
+            AuthorizationException denied => (ApiErrorResponse.GetStatusCode(denied.Error), denied.Error),
             BadHttpRequestException rejected => (rejected.StatusCode,
                 new RequestError(ErrorCodes.RequestRejected, "The HTTP request was rejected.")),
             _ => (StatusCodes.Status500InternalServerError,

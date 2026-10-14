@@ -5,6 +5,8 @@ using Common.Errors;
 using Common.Roles;
 using DataContract.Domain.Notifications;
 using DataContract.Domain.Projects;
+using Engines;
+using Engines.Authorization;
 using Managers.Notifications;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -43,10 +45,10 @@ public class NotificationManagerTests
         GrantAccess(mocks);
 
         // Act
-        var result = await CreateMockManager(mocks).GetUnreadCountAsync(UserId, OtherProjectId, CancellationToken.None);
+        var act = () => CreateMockManager(mocks).GetUnreadCountAsync(UserId, OtherProjectId, CancellationToken.None);
 
         // Assert
-        ResultAssert.Failed(ErrorCodes.Forbidden, result);
+        await AuthorizationAssert.DeniedAsync(ErrorCodes.Forbidden, act);
         mocks.NotificationAccessor.Verify(a => a.CountUnreadAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -78,10 +80,10 @@ public class NotificationManagerTests
         GrantAccess(mocks);
 
         // Act
-        var result = await CreateMockManager(mocks).GetNotificationsAsync(UserId, OtherProjectId, CancellationToken.None);
+        var act = () => CreateMockManager(mocks).GetNotificationsAsync(UserId, OtherProjectId, CancellationToken.None);
 
         // Assert
-        ResultAssert.Failed(ErrorCodes.Forbidden, result);
+        await AuthorizationAssert.DeniedAsync(ErrorCodes.Forbidden, act);
         mocks.NotificationAccessor.Verify(a => a.GetNotificationsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -132,22 +134,24 @@ public class NotificationManagerTests
         GrantAccess(mocks);
 
         // Act
-        var result = await CreateMockManager(mocks).MarkReadAsync(UserId, OtherProjectId, 12, CancellationToken.None);
+        var act = () => CreateMockManager(mocks).MarkReadAsync(UserId, OtherProjectId, 12, CancellationToken.None);
 
         // Assert
-        ResultAssert.Failed(ErrorCodes.Forbidden, result);
+        await AuthorizationAssert.DeniedAsync(ErrorCodes.Forbidden, act);
         mocks.NotificationAccessor.Verify(a => a.MarkReadAsync(
             It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     #region Private Test Helper
 
-    /// <summary>A NotificationManager over the mocked Accessors and Utilities it needs; it decides nothing an Engine owns.</summary>
+    /// <summary>A NotificationManager over the mocked Accessors and Utilities it needs; plus the real authorization Engine.</summary>
     private static NotificationManager CreateMockManager(NotificationManagerMocks mocks)
     {
         var services = new ServiceCollection();
         services.AddSingleton<AccessorFactory>();
+        services.AddSingleton<EngineFactory>();
         services.AddSingleton<UtilityFactory>();
+        services.AddSingleton<IAuthorizationEngine, AuthorizationEngine>();
         mocks.RegistryOverride(services);
 
         return ActivatorUtilities.CreateInstance<NotificationManager>(services.BuildServiceProvider());
@@ -173,7 +177,7 @@ public class NotificationManagerTests
         public Mock<IProjectAccessor> ProjectAccessor { get; } = new();
         public Mock<INotificationAccessor> NotificationAccessor { get; } = new();
         public Mock<IClockUtility> ClockUtility { get; } = new();
-        public Mock<ILogger<NotificationManager>> Logger { get; } = new();
+        public Mock<ILogger<AuthorizationEngine>> Logger { get; } = new();
 
         /// <summary>Registers each mock in place of the concrete class the factories would otherwise resolve.</summary>
         public void RegistryOverride(IServiceCollection services)

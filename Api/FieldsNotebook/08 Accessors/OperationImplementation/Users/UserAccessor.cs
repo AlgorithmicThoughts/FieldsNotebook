@@ -11,7 +11,7 @@ public class UserAccessor(FieldNotebookContext context) : IUserAccessor
 {
     public Task<UserRecord?> GetUserAsync(int userId, CancellationToken cancellationToken) =>
         context.Users.AsNoTracking()
-            .Where(u => u.Id == userId)
+            .Where(u => u.Id == userId && u.IsActive)
             .Select(u => new UserRecord(u.Id, u.DisplayName, u.Email, u.Phone, u.IsActive))
             .SingleOrDefaultAsync(cancellationToken);
 

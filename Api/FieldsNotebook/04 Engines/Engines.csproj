@@ -10,10 +10,11 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
   </ItemGroup>
 
-  <!-- Engines decide on domain contracts only: no client contracts, Accessors, or Resources. -->
+  <!-- Engines decide on domain contracts and may read through Accessors; never client contracts or Resources directly. -->
   <ItemGroup>
     <ProjectReference Include="../02 Data Contract/Data Contract.csproj" />
     <ProjectReference Include="../06 Common/Common.csproj" />
+    <ProjectReference Include="../08 Accessors/Accessors.csproj" />
   </ItemGroup>
 
 </Project>

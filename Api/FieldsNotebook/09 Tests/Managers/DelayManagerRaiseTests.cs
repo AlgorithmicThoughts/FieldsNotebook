@@ -12,6 +12,7 @@ using DataContract.Domain.Projects;
 using DataContract.Home;
 using Engines;
 using Engines.Delays;
+using Engines.Authorization;
 using Managers.Delays;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -170,10 +171,10 @@ public class DelayManagerRaiseTests
             .ReturnsAsync((ProjectAccessRecord?)null);
 
         // Act
-        var result = await CreateMockManager(mocks).RaiseAsync(UserId, ProjectId, Request(), CancellationToken.None);
+        var act = () => CreateMockManager(mocks).RaiseAsync(UserId, ProjectId, Request(), CancellationToken.None);
 
         // Assert
-        ResultAssert.Failed(ErrorCodes.Forbidden, result);
+        await AuthorizationAssert.DeniedAsync(ErrorCodes.Forbidden, act);
         VerifyNoFormRead(mocks);
         AssertNothingWritten(mocks);
     }
@@ -291,6 +292,7 @@ public class DelayManagerRaiseTests
         var services = new ServiceCollection();
         services.AddSingleton<AccessorFactory>();
         services.AddSingleton<EngineFactory>();
+        services.AddSingleton<IAuthorizationEngine, AuthorizationEngine>();
         services.AddSingleton<UtilityFactory>();
         services.AddSingleton<IDelayWorkflowEngine, DelayWorkflowEngine>();
         services.AddSingleton<IDelaySpeechEngine, DelaySpeechEngine>();
@@ -400,7 +402,7 @@ public class DelayManagerRaiseTests
         public Mock<IDelayPhotoAccessor> DelayPhotoAccessor { get; } = new();
         public Mock<ISpeechAccessor> SpeechAccessor { get; } = new();
         public Mock<IClockUtility> ClockUtility { get; } = new();
-        public Mock<ILogger<DelayManager>> Logger { get; } = new();
+        public Mock<ILogger<AuthorizationEngine>> Logger { get; } = new();
 
         /// <summary>Registers each mock in place of the concrete class the factories would otherwise resolve.</summary>
         public void RegistryOverride(IServiceCollection services)

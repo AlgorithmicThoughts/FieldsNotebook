@@ -1,7 +1,6 @@
 using Accessors;
 using Accessors.Activity;
 using Accessors.Delays;
-using Accessors.Projects;
 using Accessors.Users;
 using Accessors.WorkItems;
 using Common.Errors;
@@ -15,20 +14,24 @@ using DataContract.Mapping.DomainToClientMapping;
 using DataContract.Reports;
 using DataContract.Upcoming;
 using Engines;
+using Engines.Authorization;
 using Engines.Crews;
 using Engines.Delays;
-using Microsoft.Extensions.Logging;
 using Utilities;
 using Utilities.OperationContract;
 
 namespace Managers.Delays;
 
-public sealed class DelayInsightManager(AccessorFactory accessorFactory, EngineFactory engineFactory, UtilityFactory utilityFactory,
-    ILogger<DelayInsightManager> logger) : IDelayInsightManager
+/// <summary>
+/// Orchestrates the read views of delays. The authorization Engine throws when the user may not see a project;
+/// every other expected failure is returned in the result.
+/// </summary>
+public sealed class DelayInsightManager(AccessorFactory accessorFactory, EngineFactory engineFactory, UtilityFactory utilityFactory)
+    : IDelayInsightManager
 {
+    private readonly IAuthorizationEngine _authorizationEngine = engineFactory.CreateEngine<IAuthorizationEngine>();
     private readonly IDelayInsightEngine _insightEngine = engineFactory.CreateEngine<IDelayInsightEngine>();
     private readonly ICrewCoverageEngine _crewCoverageEngine = engineFactory.CreateEngine<ICrewCoverageEngine>();
-    private readonly IProjectAccessor _projectAccessor = accessorFactory.CreateAccessor<IProjectAccessor>();
     private readonly IDelayAccessor _delayAccessor = accessorFactory.CreateAccessor<IDelayAccessor>();
     private readonly IActivityAccessor _activityAccessor = accessorFactory.CreateAccessor<IActivityAccessor>();
     private readonly IWorkItemAccessor _workItemAccessor = accessorFactory.CreateAccessor<IWorkItemAccessor>();
@@ -38,16 +41,12 @@ public sealed class DelayInsightManager(AccessorFactory accessorFactory, EngineF
 
     public async Task<Result<HomeResponse>> GetHomeAsync(int userId, int projectId, CancellationToken cancellationToken)
     {
-        var access = await _projectAccessor.AuthorizeProjectAsync(userId, projectId, logger, cancellationToken);
-        if (access.IsFailure)
-        {
-            return access.Error;
-        }
+        var access = await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
 
-        var ourCrewIds = _crewCoverageEngine.GetCoveredCrewIds(access.Data);
+        var ourCrewIds = _crewCoverageEngine.GetCoveredCrewIds(access);
         if (ourCrewIds.Count == 0)
         {
-            return _insightEngine.BuildHome(ourCrewIds, ActiveDelaySet.Empty, []).ToResponse(access.Data);
+            return _insightEngine.BuildHome(ourCrewIds, ActiveDelaySet.Empty, []).ToResponse(access);
         }
 
         // Sequential on purpose: both Accessors share this request's DbContext.
@@ -55,18 +54,14 @@ public sealed class DelayInsightManager(AccessorFactory accessorFactory, EngineF
         var activity = await _activityAccessor.GetRecentActivityForCrewsAsync(projectId, ourCrewIds, _insightEngine.RecentActivityLimit,
             cancellationToken);
 
-        return _insightEngine.BuildHome(ourCrewIds, active, activity).ToResponse(access.Data);
+        return _insightEngine.BuildHome(ourCrewIds, active, activity).ToResponse(access);
     }
 
     public async Task<Result<UpcomingResponse>> GetUpcomingAsync(int userId, int projectId, CancellationToken cancellationToken)
     {
-        var access = await _projectAccessor.AuthorizeProjectAsync(userId, projectId, logger, cancellationToken);
-        if (access.IsFailure)
-        {
-            return access.Error;
-        }
+        var access = await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
 
-        var ourCrewIds = _crewCoverageEngine.GetCoveredCrewIds(access.Data);
+        var ourCrewIds = _crewCoverageEngine.GetCoveredCrewIds(access);
         if (ourCrewIds.Count == 0)
         {
             return _insightEngine.BuildUpcoming(ActiveDelaySet.Empty, PlannedWorkSet.Empty).ToResponse();
@@ -86,23 +81,15 @@ public sealed class DelayInsightManager(AccessorFactory accessorFactory, EngineF
 
     public async Task<Result<TrackingResponse>> GetProjectTrackingDetailsAsync(int userId, int projectId, CancellationToken cancellationToken)
     {
-        var access = await _projectAccessor.AuthorizeProjectAsync(userId, projectId, logger, cancellationToken);
-        if (access.IsFailure)
-        {
-            return access.Error;
-        }
+        var access = await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
 
         var history = await _delayAccessor.GetDelayHistoryAsync(projectId, null, cancellationToken);
-        return _insightEngine.BuildTracking(history).ToTrackingResponse(access.Data, _photoAccessor.GetViewUrl);
+        return _insightEngine.BuildTracking(history).ToTrackingResponse(access, _photoAccessor.GetViewUrl);
     }
 
     public async Task<Result<TrackingDelayResponse>> GetDelayAsync(int userId, int projectId, int delayId, CancellationToken cancellationToken)
     {
-        var access = await _projectAccessor.AuthorizeProjectAsync(userId, projectId, logger, cancellationToken);
-        if (access.IsFailure)
-        {
-            return access.Error;
-        }
+        var access = await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
 
         var history = await _delayAccessor.GetDelayHistoryAsync(projectId, delayId, cancellationToken);
         if (_insightEngine.BuildTracking(history).SingleOrDefault() is not { } delay)
@@ -110,7 +97,7 @@ public sealed class DelayInsightManager(AccessorFactory accessorFactory, EngineF
             return DelayErrors.NotFound(delayId);
         }
 
-        return delay.ToResponse(access.Data, _photoAccessor.GetViewUrl);
+        return delay.ToResponse(access, _photoAccessor.GetViewUrl);
     }
 
     public async Task<Result<IReadOnlyList<DelayReportRowResponse>>> GetDelayReportAsync(int userId, DelayReportRequest request, CancellationToken cancellationToken)
@@ -121,11 +108,7 @@ public sealed class DelayInsightManager(AccessorFactory accessorFactory, EngineF
         // A report must not widen past the projects the user can open, so one denial fails the whole scope.
         foreach (var projectId in query.ProjectIds)
         {
-            var access = await _projectAccessor.AuthorizeProjectAsync(userId, projectId, logger, cancellationToken);
-            if (access.IsFailure)
-            {
-                return access.Error;
-            }
+            await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
         }
 
         var report = await _delayAccessor.FindDelaysAsync(query, cancellationToken);

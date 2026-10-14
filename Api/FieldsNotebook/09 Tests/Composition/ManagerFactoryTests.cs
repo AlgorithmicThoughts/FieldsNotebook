@@ -1,4 +1,5 @@
 using Engines;
+using Engines.Authorization;
 using Engines.Crews;
 using Engines.Delays;
 using Managers;
@@ -37,6 +38,7 @@ public class ManagerFactoryTests
         ];
         IEngine[] resolvedEngines =
         [
+            engines.CreateEngine<IAuthorizationEngine>(),
             engines.CreateEngine<IDelayWorkflowEngine>(),
             engines.CreateEngine<IDelayInsightEngine>(),
             engines.CreateEngine<IDelaySpeechEngine>(),

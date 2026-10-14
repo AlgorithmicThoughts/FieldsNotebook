@@ -13,6 +13,7 @@ using DataContract.Domain.Projects;
 using DataContract.Domain.Users;
 using Engines;
 using Engines.Delays;
+using Engines.Authorization;
 using Managers.Delays;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -139,10 +140,10 @@ public class DelayManagerWorkflowTests
         var request = new AcknowledgeDelayRequest("WorkRemains", null, null);
 
         // Act
-        var result = await CreateMockManager(mocks).AcknowledgeAsync(UserId, ProjectId, DelayId, request, CancellationToken.None);
+        var act = () => CreateMockManager(mocks).AcknowledgeAsync(UserId, ProjectId, DelayId, request, CancellationToken.None);
 
         // Assert
-        ResultAssert.Failed(ErrorCodes.Forbidden, result);
+        await AuthorizationAssert.DeniedAsync(ErrorCodes.Forbidden, act);
         mocks.DelayWorkflowAccessor.Verify(a => a.GetWorkflowStateAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         AssertNothingWritten(mocks);
     }
@@ -516,6 +517,7 @@ public class DelayManagerWorkflowTests
         var services = new ServiceCollection();
         services.AddSingleton<AccessorFactory>();
         services.AddSingleton<EngineFactory>();
+        services.AddSingleton<IAuthorizationEngine, AuthorizationEngine>();
         services.AddSingleton<UtilityFactory>();
         services.AddSingleton<IDelayWorkflowEngine, DelayWorkflowEngine>();
         services.AddSingleton<IDelaySpeechEngine, DelaySpeechEngine>();
@@ -623,7 +625,7 @@ public class DelayManagerWorkflowTests
         public Mock<IDelayPhotoAccessor> DelayPhotoAccessor { get; } = new();
         public Mock<ISpeechAccessor> SpeechAccessor { get; } = new();
         public Mock<IClockUtility> ClockUtility { get; } = new();
-        public Mock<ILogger<DelayManager>> Logger { get; } = new();
+        public Mock<ILogger<AuthorizationEngine>> Logger { get; } = new();
 
         /// <summary>Registers each mock in place of the concrete class the factories would otherwise resolve.</summary>
         public void RegistryOverride(IServiceCollection services)

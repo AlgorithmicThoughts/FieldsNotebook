@@ -1,3 +1,4 @@
+using Engines.Authorization;
 using Engines.Crews;
 using Engines.Delays;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +11,7 @@ public class EngineFactory(IServiceProvider services)
     public static void RegisterServices(IServiceCollection services)
     {
         services.AddScoped<EngineFactory>();
+        services.AddScoped<IAuthorizationEngine, AuthorizationEngine>();
         services.AddScoped<IDelayWorkflowEngine, DelayWorkflowEngine>();
         services.AddScoped<IDelayInsightEngine, DelayInsightEngine>();
         services.AddScoped<IDelaySpeechEngine, DelaySpeechEngine>();

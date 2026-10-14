@@ -12,8 +12,8 @@ using DataContract.Home;
 using DataContract.Mapping.ClientToDomainMapping;
 using DataContract.Mapping.DomainToClientMapping;
 using Engines;
+using Engines.Authorization;
 using Engines.Delays;
-using Microsoft.Extensions.Logging;
 using Utilities;
 using Utilities.OperationContract;
 
@@ -23,11 +23,12 @@ namespace Managers.Delays;
 /// Orchestrates the delay workflow. Each operation loads what the decision needs, lets the workflow Engine
 /// decide, and hands the outcome to the Accessors; the rules themselves live in the Engine. Photos are stored
 /// before the write that records them and removed again if that write does not commit.
-/// Every expected failure is returned in the result. Identifiers arrive already checked by the API's [PositiveId] attributes.
+/// Every expected failure is returned in the result. Identifiers arrive already checked by the API's [PositiveId] attributes;
+/// the authorization Engine throws when the user may not see the project.
 /// </summary>
-public sealed class DelayManager(AccessorFactory accessorFactory, EngineFactory engineFactory, UtilityFactory utilityFactory,
-    ILogger<DelayManager> logger) : IDelayManager
+public sealed class DelayManager(AccessorFactory accessorFactory, EngineFactory engineFactory, UtilityFactory utilityFactory) : IDelayManager
 {
+    private readonly IAuthorizationEngine _authorizationEngine = engineFactory.CreateEngine<IAuthorizationEngine>();
     private readonly IDelayWorkflowEngine _workflowEngine = engineFactory.CreateEngine<IDelayWorkflowEngine>();
     private readonly IDelaySpeechEngine _speechEngine = engineFactory.CreateEngine<IDelaySpeechEngine>();
     private readonly IProjectAccessor _projectAccessor = accessorFactory.CreateAccessor<IProjectAccessor>();
@@ -181,13 +182,8 @@ public sealed class DelayManager(AccessorFactory accessorFactory, EngineFactory 
 
     private async Task<Result<ProjectAccessRecord>> GetReporterAccessAsync(int userId, int projectId, CancellationToken cancellationToken)
     {
-        var access = await _projectAccessor.AuthorizeProjectAsync(userId, projectId, logger, cancellationToken);
-        if (access.IsFailure)
-        {
-            return access.Error;
-        }
-
-        if (_workflowEngine.CheckReporter(access.Data) is { } refused)
+        var access = await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
+        if (_workflowEngine.CheckReporter(access) is { } refused)
         {
             return refused;
         }
@@ -210,12 +206,7 @@ public sealed class DelayManager(AccessorFactory accessorFactory, EngineFactory 
 
     private async Task<Result<DelayWorkflowContext>> LoadWorkflowAsync(int userId, int projectId, int delayId, CancellationToken cancellationToken)
     {
-        var access = await _projectAccessor.AuthorizeProjectAsync(userId, projectId, logger, cancellationToken);
-        if (access.IsFailure)
-        {
-            return access.Error;
-        }
-
+        var access = await _authorizationEngine.AuthorizeProjectAsync(userId, projectId, cancellationToken);
         var state = await _workflowAccessor.GetWorkflowStateAsync(projectId, delayId, cancellationToken);
         if (state is null)
         {
@@ -223,7 +214,7 @@ public sealed class DelayManager(AccessorFactory accessorFactory, EngineFactory 
         }
 
         var contacts = await _projectAccessor.GetCrewContactsAsync(projectId, cancellationToken);
-        return new DelayWorkflowContext(userId, access.Data, state, _clock.UtcNow, contacts);
+        return new DelayWorkflowContext(userId, access, state, _clock.UtcNow, contacts);
     }
 
     /// <summary>

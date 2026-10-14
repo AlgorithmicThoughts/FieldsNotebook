@@ -14,6 +14,7 @@ using DataContract.Reports;
 using Engines;
 using Engines.Crews;
 using Engines.Delays;
+using Engines.Authorization;
 using Managers.Delays;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -65,10 +66,10 @@ public class DelayInsightManagerReportTests
         GrantAccess(mocks, 1);
 
         // Act
-        var result = await CreateMockManager(mocks).GetDelayReportAsync(UserId, new DelayReportRequest([1, 2], null, null), CancellationToken.None);
+        var act = () => CreateMockManager(mocks).GetDelayReportAsync(UserId, new DelayReportRequest([1, 2], null, null), CancellationToken.None);
 
         // Assert
-        ResultAssert.Failed(ErrorCodes.Forbidden, result);
+        await AuthorizationAssert.DeniedAsync(ErrorCodes.Forbidden, act);
         mocks.DelayAccessor.VerifyNoOtherCalls();
     }
 
@@ -113,6 +114,7 @@ public class DelayInsightManagerReportTests
         var services = new ServiceCollection();
         services.AddSingleton<AccessorFactory>();
         services.AddSingleton<EngineFactory>();
+        services.AddSingleton<IAuthorizationEngine, AuthorizationEngine>();
         services.AddSingleton<UtilityFactory>();
         services.AddSingleton<IDelayInsightEngine, DelayInsightEngine>();
         services.AddSingleton<ICrewCoverageEngine, CrewCoverageEngine>();
@@ -137,7 +139,7 @@ public class DelayInsightManagerReportTests
         public Mock<IDelayPhotoAccessor> DelayPhotoAccessor { get; } = new();
         public Mock<IUserAccessor> UserAccessor { get; } = new();
         public Mock<IClockUtility> ClockUtility { get; } = new();
-        public Mock<ILogger<DelayInsightManager>> Logger { get; } = new();
+        public Mock<ILogger<AuthorizationEngine>> Logger { get; } = new();
 
         /// <summary>Registers each mock in place of the concrete class the factories would otherwise resolve.</summary>
         public void RegistryOverride(IServiceCollection services)
