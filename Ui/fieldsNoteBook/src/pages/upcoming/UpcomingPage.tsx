@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CalendarCheck, Megaphone, Plus } from "lucide-react";
-import { isAbortError, isApiError } from "@/api/errors";
 import { getProjectUpcoming } from "@/api/upcoming";
 import { Badge } from "@/components/common/Badge";
 import { Button } from "@/components/common/Button";
@@ -9,6 +8,7 @@ import { Icon } from "@/components/common/Icon";
 import { AddDelayModal } from "@/components/delays/AddDelayModal";
 import { EmptyDelays } from "@/components/delays/EmptyDelays";
 import { canReportDelay } from "@/domain/permissions";
+import { useApiQuery } from "@/hooks/useApiQuery";
 import type { BlockedWorkRow as BlockedWork } from "@/domain/upcoming";
 import { PROJECT_TIME_LABEL } from "@/lib/projectTime";
 import { useWorkspace } from "@/routes/useWorkspace";
@@ -19,15 +19,6 @@ import "./UpcomingPage.css";
 
 const GENERIC_ERROR =
   "Field Notebook could not load tomorrow’s work for this project.";
-
-/**
- * `key` records the request the result belongs to. A late reply for another
- * project, or for a previous attempt, no longer matches and never renders.
- */
-type UpcomingState =
-  | { key: null }
-  | { key: string; status: "error"; message: string }
-  | { key: string; status: "ready"; rows: BlockedWork[] };
 
 interface BlockedWorkBodyProps {
   rows: BlockedWork[];
@@ -60,36 +51,12 @@ function BlockedWorkBody({ rows }: BlockedWorkBodyProps) {
 export function UpcomingPage() {
   const { user, project } = useWorkspace();
   const projectId = user.activeProjectId;
-  const [state, setState] = useState<UpcomingState>({ key: null });
-  const [reloadCount, setReloadCount] = useState(0);
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const requestKey = `${projectId}:${reloadCount}`;
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const { signal } = controller;
-
-    getProjectUpcoming(projectId, { signal })
-      .then((rows) => {
-        if (!signal.aborted) {
-          setState({ key: requestKey, status: "ready", rows });
-        }
-      })
-      .catch((error: unknown) => {
-        if (isAbortError(error) || signal.aborted) {
-          return;
-        }
-
-        setState({
-          key: requestKey,
-          status: "error",
-          message: isApiError(error) ? error.message : GENERIC_ERROR,
-        });
-      });
-
-    // A late answer for the previous project must not replace the current one.
-    return () => controller.abort();
-  }, [projectId, requestKey]);
+  const { state, reload } = useApiQuery(
+    `upcoming:${projectId}`,
+    (signal) => getProjectUpcoming(projectId, { signal }),
+    GENERIC_ERROR,
+  );
 
   const title = (
     <div className="page-title">
@@ -120,11 +87,11 @@ export function UpcomingPage() {
       projectId={projectId}
       // Only the API knows whether a new delay blocks work the next project
       // day plans for, so the page asks again instead of guessing a row.
-      onCreated={() => setReloadCount((count) => count + 1)}
+      onCreated={() => reload()}
     />
   );
 
-  if (state.key !== requestKey) {
+  if (state.status === "idle" || state.status === "loading") {
     return (
       <>
         {title}
@@ -148,7 +115,7 @@ export function UpcomingPage() {
             <Button
               label="Try again"
               variant="primary"
-              onClick={() => setReloadCount((count) => count + 1)}
+              onClick={() => reload()}
             />
           </div>
         </Card>
@@ -157,7 +124,7 @@ export function UpcomingPage() {
     );
   }
 
-  const { rows } = state;
+  const rows = state.data;
 
   return (
     <>

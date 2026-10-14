@@ -8,6 +8,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import type { ApiQueryState } from "@/hooks/useApiQuery";
 import {
   isDelayActive,
   type DelayDetail,
@@ -123,19 +124,13 @@ export function toVisibleDelays(
     .sort(byPressingThenNewest);
 }
 
-/**
- * `key` records the request the loaded delays belong to, so a late answer for
- * a previous scope or a previous attempt never renders.
- */
-export type TrackingState =
-  | { key: null }
-  | { key: string; status: "error"; message: string }
-  | {
-      key: string;
-      status: "ready";
-      delays: DelaySummary[];
-      emptyMessage: string;
-    };
+/** The delays of every project in scope, from one load. */
+export interface TrackingData {
+  delays: DelaySummary[];
+  emptyMessage: string;
+}
+
+export type TrackingState = ApiQueryState<TrackingData>;
 
 export type TrackingResultsView =
   | { kind: "loading" }
@@ -145,40 +140,30 @@ export type TrackingResultsView =
 /** What the results card shows for the current request, tab, and search term. */
 export function toResultsView(
   state: TrackingState,
-  requestKey: string,
   user: CurrentUser,
   filter: TrackingFilter,
   search: string,
 ): TrackingResultsView {
-  if (state.key === null || state.key !== requestKey) {
-    return { kind: "loading" };
-  }
-
   if (state.status === "error") {
     return { kind: "error", message: state.message };
   }
 
+  if (state.status !== "ready") {
+    return { kind: "loading" };
+  }
+
+  const { delays, emptyMessage } = state.data;
+
   return {
     kind: "ready",
-    delays: toVisibleDelays(state.delays, user, filter, search),
-    emptyMessage: state.delays.length === 0 ? state.emptyMessage : undefined,
+    delays: toVisibleDelays(delays, user, filter, search),
+    emptyMessage: delays.length === 0 ? emptyMessage : undefined,
   };
 }
 
 /** The delays of the current request, whatever the tab and search term hide. */
-export function toLoadedDelays(
-  state: TrackingState,
-  requestKey: string,
-): DelaySummary[] {
-  if (
-    state.key === null ||
-    state.key !== requestKey ||
-    state.status === "error"
-  ) {
-    return [];
-  }
-
-  return state.delays;
+export function toLoadedDelays(state: TrackingState): DelaySummary[] {
+  return state.status === "ready" ? state.data.delays : [];
 }
 
 /** The workflow actions the detail view can offer, each with its own endpoint. */
@@ -313,7 +298,9 @@ function currentStageIndex(delay: DelayDetail): number {
       return hasEveryHandoverCheck(delay) ? 4 : 3;
     case "Resolved":
       return 5;
-    default:
+    case "Raised":
+    case "Reopened":
+    case "Revoked":
       return 1;
   }
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { isApiError } from '@/api/errors'
+import { errorMessage } from '@/api/errors'
 import type { UserSettings, UserSettingsUpdate } from '@/api/users'
 
 type SettingKey = keyof UserSettings
@@ -57,7 +57,7 @@ export function useSettingsDraft(
 
     saveSettings(changes)
       .then(() => setDraft((current) => differingFrom(current, changes)))
-      .catch((error: unknown) => setSaveError(isApiError(error) ? error.message : SAVE_FAILED))
+      .catch((error: unknown) => setSaveError(errorMessage(error, SAVE_FAILED)))
       .finally(() => setIsSaving(false))
   }
 

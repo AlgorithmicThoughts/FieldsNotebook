@@ -73,7 +73,7 @@ export function NotificationsPage() {
   /** The read is recorded first, then the delay opens whether or not it saved. */
   function openDelay(notice: NotificationSummary) {
     markNoticeRead(notice.id)
-    navigate(`/tracking?delay=${notice.delayNumber}`)
+    void navigate(`/tracking?delay=${notice.delayNumber}`)
   }
 
   return (

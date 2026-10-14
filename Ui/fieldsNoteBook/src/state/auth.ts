@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, use } from 'react'
 import type { Credentials } from '@/api/auth'
 import type { AuthSession } from '@/domain/auth'
 
@@ -13,7 +13,7 @@ export interface AuthState {
 export const AuthContext = createContext<AuthState | null>(null)
 
 export function useAuth(): AuthState {
-  const state = useContext(AuthContext)
+  const state = use(AuthContext)
 
   if (state === null) {
     throw new Error('useAuth needs an AuthProvider above it.')

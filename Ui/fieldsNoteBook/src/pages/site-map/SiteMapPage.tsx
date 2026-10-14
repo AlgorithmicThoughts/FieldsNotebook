@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getProjectTracking, type ProjectTracking } from '@/api/tracking'
-import { isAbortError, isApiError } from '@/api/errors'
 import type { DelayPhotoPreview } from '@/api/siteMaps'
 import { Button } from '@/components/common/Button'
 import { Card } from '@/components/common/Card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { DelaySummary, SiteMapOption } from '@/domain/delays'
+import { useApiQuery } from '@/hooks/useApiQuery'
 import { useWorkspace } from '@/routes/useWorkspace'
 import { DelayDetailModal } from '@/pages/tracking/components/DelayDetailModal'
 import { SelectedDelayCard } from './components/SelectedDelayCard'
@@ -18,15 +18,6 @@ interface SiteMapData {
   delays: DelaySummary[]
   photos: DelayPhotoPreview[]
 }
-
-/**
- * `key` records the request the result belongs to, so a late answer for a
- * previous project or a previous attempt never renders.
- */
-type SiteMapState =
-  | { key: null }
-  | { key: string; status: 'error'; message: string }
-  | { key: string; status: 'ready'; data: SiteMapData }
 
 const GENERIC_ERROR = 'Field Notebook could not load the site map for this project.'
 
@@ -51,45 +42,27 @@ function SiteMapSkeleton() {
 export function SiteMapPage() {
   const { user, project } = useWorkspace()
   const projectId = user.activeProjectId
-  const [state, setState] = useState<SiteMapState>({ key: null })
-  const [reloadCount, setReloadCount] = useState(0)
   const [selectedDelayNumber, setSelectedDelayNumber] = useState<string | null>(null)
   const [isSummaryOpen, setIsSummaryOpen] = useState(false)
-  const requestKey = `${projectId}:${reloadCount}`
+  const { state, reload } = useApiQuery(
+    `site-map:${projectId}`,
+    async (signal): Promise<SiteMapData> => {
+      const tracking = await getProjectTracking(projectId, { signal })
 
-  useEffect(() => {
-    const controller = new AbortController()
-    const { signal } = controller
+      // Fresh delays may no longer hold the pin the user had open.
+      setSelectedDelayNumber(null)
+      setIsSummaryOpen(false)
 
-    getProjectTracking(projectId, { signal })
-      .then((tracking) => {
-        if (signal.aborted) {
-          return
-        }
+      return {
+        siteMap: tracking.delays.find((row) => row.siteMap !== null)?.siteMap ?? null,
+        delays: tracking.delays.map((row) => row.summary),
+        photos: latestPhotos(tracking),
+      }
+    },
+    GENERIC_ERROR,
+  )
 
-        setSelectedDelayNumber(null)
-        setIsSummaryOpen(false)
-        const delays = tracking.delays.map((row) => row.summary)
-        const photos = latestPhotos(tracking)
-        const siteMap = tracking.delays.find((row) => row.siteMap !== null)?.siteMap ?? null
-        setState({ key: requestKey, status: 'ready', data: { siteMap, delays, photos } })
-      })
-      .catch((error: unknown) => {
-        if (isAbortError(error) || signal.aborted) {
-          return
-        }
-
-        setState({
-          key: requestKey,
-          status: 'error',
-          message: isApiError(error) ? error.message : GENERIC_ERROR,
-        })
-      })
-
-    return () => controller.abort()
-  }, [projectId, requestKey])
-
-  if (state.key !== requestKey) {
+  if (state.status === 'idle' || state.status === 'loading') {
     return <SiteMapSkeleton />
   }
 
@@ -102,7 +75,7 @@ export function SiteMapPage() {
           <Button
             label="Try again"
             variant="primary"
-            onClick={() => setReloadCount((count) => count + 1)}
+            onClick={reload}
           />
         </div>
       </Card>
@@ -148,7 +121,7 @@ export function SiteMapPage() {
         summary={isSummaryOpen ? selectedDelay : null}
         user={user}
         onClose={() => setIsSummaryOpen(false)}
-        onDelayChanged={() => setReloadCount((count) => count + 1)}
+        onDelayChanged={reload}
       />
     </>
   )

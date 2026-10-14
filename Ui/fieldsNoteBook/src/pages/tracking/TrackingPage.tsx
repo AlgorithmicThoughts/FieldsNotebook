@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { getProjectTracking } from "@/api/tracking";
-import { isAbortError, isApiError } from "@/api/errors";
 import { Button } from "@/components/common/Button";
 import { AddDelayModal } from "@/components/delays/AddDelayModal";
 import { PillTabs } from "@/components/common/Tabs";
 import { canReportDelay } from "@/domain/permissions";
+import { useApiQuery } from "@/hooks/useApiQuery";
 import { useWorkspace } from "@/routes/useWorkspace";
 import { DelayDetailModal } from "./components/DelayDetailModal";
 import { TrackingResults } from "./components/TrackingResults";
@@ -17,7 +17,7 @@ import {
   toResultsView,
   type TrackingFilter,
   type TrackingScope,
-  type TrackingState,
+  type TrackingData,
 } from "./trackingView";
 import "./TrackingPage.css";
 
@@ -37,12 +37,9 @@ export function TrackingPage() {
   const [scope, setScope] = useState<TrackingScope>("project");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<TrackingFilter>("all");
-  const [reloadCount, setReloadCount] = useState(0);
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const [state, setState] = useState<TrackingState>({ key: null });
 
-  // Scope never widens past the assigned projects. The memo holds one array
-  // identity, so a render alone cannot restart the request.
+  // Scope never widens past the assigned projects.
   const projectIds = useMemo(
     () =>
       scope === "all"
@@ -50,41 +47,22 @@ export function TrackingPage() {
         : [user.activeProjectId],
     [scope, user.projects, user.activeProjectId],
   );
-  const requestKey = `${user.id}:${projectIds.join(",")}:${reloadCount}`;
+  // A new scope aborts the previous request, so a late answer never replaces the current one.
+  const { state, reload } = useApiQuery(
+    `tracking:${user.id}:${projectIds.join(",")}`,
+    async (signal): Promise<TrackingData> => {
+      const results = await Promise.all(projectIds.map((id) => getProjectTracking(id, { signal })));
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const { signal } = controller;
+      return {
+        delays: results.flatMap((result) => result.delays.map((row) => row.summary)),
+        emptyMessage: results.map((result) => result.projectName + " has no tracking information.").join(" "),
+      };
+    },
+    GENERIC_ERROR,
+  );
 
-    Promise.all(projectIds.map((id) => getProjectTracking(id, { signal })))
-      .then((results) => {
-        if (!signal.aborted) {
-          setState({
-            key: requestKey,
-            status: "ready",
-            delays: results.flatMap((result) => result.delays.map((row) => row.summary)),
-            emptyMessage: results.map((result) => result.projectName + " has no tracking information.").join(" "),
-          });
-        }
-      })
-      .catch((error: unknown) => {
-        if (isAbortError(error) || signal.aborted) {
-          return;
-        }
-
-        setState({
-          key: requestKey,
-          status: "error",
-          message: isApiError(error) ? error.message : GENERIC_ERROR,
-        });
-      });
-
-    // A late answer for the previous scope must not replace the current one.
-    return () => controller.abort();
-  }, [projectIds, requestKey]);
-
-  const view = toResultsView(state, requestKey, user, filter, search);
-  const loaded = toLoadedDelays(state, requestKey);
+  const view = toResultsView(state, user, filter, search);
+  const loaded = toLoadedDelays(state);
   const openedNumber = searchParams.get(DELAY_PARAM);
   const openedDelay =
     loaded.find((delay) => delay.number === openedNumber) ?? null;
@@ -116,7 +94,7 @@ export function TrackingPage() {
         isLoading={view.kind === "loading"}
         onScopeChange={setScope}
         onSearchChange={setSearch}
-        onRefresh={() => setReloadCount((count) => count + 1)}
+        onRefresh={reload}
       />
 
       <div className="tracking-filters">
@@ -128,7 +106,7 @@ export function TrackingPage() {
         >
           <TrackingResults
             view={view}
-            onRetry={() => setReloadCount((count) => count + 1)}
+            onRetry={reload}
             onOpenDelay={(delayNumber) =>
               setSearchParams({ [DELAY_PARAM]: delayNumber })
             }
@@ -140,14 +118,14 @@ export function TrackingPage() {
         summary={openedDelay}
         user={user}
         onClose={() => setSearchParams({}, { replace: true })}
-        onDelayChanged={() => setReloadCount((count) => count + 1)}
+        onDelayChanged={reload}
       />
       <AddDelayModal
         open={isReportOpen}
         onOpenChange={setIsReportOpen}
         user={user}
         projectId={user.activeProjectId}
-        onCreated={() => setReloadCount((count) => count + 1)}
+        onCreated={reload}
       />
     </>
   );

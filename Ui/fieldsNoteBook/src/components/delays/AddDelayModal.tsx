@@ -63,7 +63,7 @@ function OpenDelayModal({
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const savingRef = useRef(false)
-  const alive = useRef(false)
+  const aliveRef = useRef(false)
 
   useEffect(() => {
     if (!open) {
@@ -96,9 +96,9 @@ function OpenDelayModal({
 
   useEffect(() => {
     // Five full-resolution phone photos are real memory.
-    alive.current = true
+    aliveRef.current = true
     return () => {
-      alive.current = false
+      aliveRef.current = false
       revokePreviews(photosRef.current)
     }
   }, [])
@@ -122,19 +122,19 @@ function OpenDelayModal({
   }
 
   function reportCreated(created: DelaySummary) {
-    if (!alive.current) return
+    if (!aliveRef.current) return
     discardReport()
     onCreated(created)
     onOpenChange(false)
   }
 
   function reportFailed(error: unknown) {
-    if (alive.current && !isAbortError(error)) setSaveError(messageOf(error))
+    if (aliveRef.current && !isAbortError(error)) setSaveError(messageOf(error))
   }
 
   function finishSaving() {
     savingRef.current = false
-    if (alive.current) setIsSaving(false)
+    if (aliveRef.current) setIsSaving(false)
   }
 
   function save(request: CreateDelayRequest) {

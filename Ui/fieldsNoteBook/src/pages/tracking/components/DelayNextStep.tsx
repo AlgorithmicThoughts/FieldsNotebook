@@ -26,7 +26,7 @@ interface DelayNextStepProps {
 export function DelayNextStep({ note, offers, delay, user, onCompleted }: DelayNextStepProps) {
   const [openAction, setOpenAction] = useState<DelayActionId | null>(null)
   const [draft, setDraft] = useState<DelayActionDraft>(EMPTY_ACTION_DRAFT)
-  const previews = useRef<string[]>([])
+  const previewsRef = useRef<string[]>([])
   // The accepted action closes its own form; the reloaded delay offers what comes next.
   const { pending, error, submit, clearError } = useDelayAction(delay, () => {
     setOpenAction(null)
@@ -36,9 +36,9 @@ export function DelayNextStep({ note, offers, delay, user, onCompleted }: DelayN
 
   // Chosen photos hold object URLs for their previews. Release them when the card unmounts.
   useEffect(() => {
-    previews.current = draft.photos.map((photo) => photo.previewUrl)
+    previewsRef.current = draft.photos.map((photo) => photo.previewUrl)
   }, [draft.photos])
-  useEffect(() => () => previews.current.forEach((url) => URL.revokeObjectURL(url)), [])
+  useEffect(() => () => previewsRef.current.forEach((url) => URL.revokeObjectURL(url)), [])
 
   /** Replaces the draft and releases the previews of any photos it drops. */
   function resetDraft(next: DelayActionDraft) {

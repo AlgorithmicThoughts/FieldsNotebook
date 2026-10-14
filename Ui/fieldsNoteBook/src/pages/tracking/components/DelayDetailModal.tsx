@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Building2, CalendarDays, MapPin, Pin } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import { Icon } from '@/components/common/Icon'
@@ -115,15 +114,14 @@ interface DelayDetailModalProps {
 
 /** One delay in full: its author, cycles, affected crews, photos, and history. */
 export function DelayDetailModal({ summary, user, onClose, onDelayChanged }: DelayDetailModalProps) {
-  const [reloadCount, setReloadCount] = useState(0)
-  const state = useDelayDetail(summary?.id ?? null, summary?.projectId ?? null, reloadCount)
+  const { state, reload } = useDelayDetail(summary?.id ?? null, summary?.projectId ?? null)
 
   if (summary === null) {
     return null
   }
 
-  const data = state.key !== null && state.status === 'ready' ? state.data : null
-  const errorMessage = state.key !== null && state.status === 'error' ? state.message : null
+  const data = state.status === 'ready' ? state.data : null
+  const errorMessage = state.status === 'error' ? state.message : null
 
   return (
     <Modal open wide title={summary.number} onOpenChange={onClose}>
@@ -147,7 +145,7 @@ export function DelayDetailModal({ summary, user, onClose, onDelayChanged }: Del
           {...data}
           user={user}
           onActionCompleted={() => {
-            setReloadCount((count) => count + 1)
+            reload()
             onDelayChanged()
           }}
         />

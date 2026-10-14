@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Mic, Send, Square, X } from 'lucide-react'
 import { transcribeDelay } from '@/api/delayReports'
-import { isAbortError, isApiError } from '@/api/errors'
+import { errorMessage, isAbortError } from '@/api/errors'
 import type { DelaySpeechResponse } from '@/domain/delays'
 import { startAudioRecorder } from '@/lib/audioRecorder'
 import { Button, IconButton } from '@/components/common/Button'
@@ -18,38 +18,38 @@ export function DelayRecordingControls({
 }: DelayRecordingControlsProps) {
   const [state, setState] = useState<'idle' | 'starting' | 'recording' | 'stopping' | 'ready' | 'sending'>('idle')
   const [error, setError] = useState<string | null>(null)
-  const recording = useRef<Blob | null>(null)
-  const capture = useRef<AbortController | null>(null)
-  const request = useRef<AbortController | null>(null)
-  const stopCapture = useRef<(() => void) | null>(null)
+  const recordingRef = useRef<Blob | null>(null)
+  const captureRef = useRef<AbortController | null>(null)
+  const requestRef = useRef<AbortController | null>(null)
+  const stopCaptureRef = useRef<(() => void) | null>(null)
 
   useEffect(() => () => {
-    capture.current?.abort()
-    request.current?.abort()
-    recording.current = null
+    captureRef.current?.abort()
+    requestRef.current?.abort()
+    recordingRef.current = null
   }, [])
 
   function cancel() {
-    capture.current?.abort()
-    request.current?.abort()
-    request.current = null
-    recording.current = null
+    captureRef.current?.abort()
+    requestRef.current?.abort()
+    requestRef.current = null
+    recordingRef.current = null
     onProcessingChange(false)
     setError(null)
     setState('idle')
   }
 
   async function start() {
-    capture.current?.abort()
+    captureRef.current?.abort()
     const controller = new AbortController()
-    capture.current = controller
-    recording.current = null
+    captureRef.current = controller
+    recordingRef.current = null
     setError(null)
     setState('starting')
     try {
-      stopCapture.current = await startAudioRecorder({
+      stopCaptureRef.current = await startAudioRecorder({
         onComplete(audio) {
-          recording.current = audio
+          recordingRef.current = audio
           setState('ready')
         },
         onError(message) {
@@ -67,24 +67,24 @@ export function DelayRecordingControls({
 
   function stop() {
     setState('stopping')
-    stopCapture.current?.()
+    stopCaptureRef.current?.()
   }
 
   async function send() {
-    if (recording.current === null || request.current !== null) return
+    if (recordingRef.current === null || requestRef.current !== null) return
     const controller = new AbortController()
-    request.current = controller
+    requestRef.current = controller
     setError(null)
     setState('sending')
     onProcessingChange(true)
     try {
-      const fields = await transcribeDelay(projectId, recording.current, { signal: controller.signal })
+      const fields = await transcribeDelay(projectId, recordingRef.current, { signal: controller.signal })
       completeSend(controller, fields)
     } catch (error: unknown) {
       failSend(controller, error)
     } finally {
       if (!controller.signal.aborted) {
-        request.current = null
+        requestRef.current = null
         onProcessingChange(false)
       }
     }
@@ -93,13 +93,13 @@ export function DelayRecordingControls({
   function completeSend(controller: AbortController, fields: DelaySpeechResponse) {
     if (controller.signal.aborted) return
     onTranscribed(fields)
-    recording.current = null
+    recordingRef.current = null
     setState('idle')
   }
 
   function failSend(controller: AbortController, error: unknown) {
     if (isAbortError(error) || controller.signal.aborted) return
-    setError(isApiError(error) ? error.message : 'Could not transcribe this recording. Try again.')
+    setError(errorMessage(error, 'Could not transcribe this recording. Try again.'))
     setState('ready')
   }
 

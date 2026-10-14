@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { isApiError } from '@/api/errors'
+import { useMemo, useRef, useState } from 'react'
+import { errorMessage } from '@/api/errors'
 import { updateUserSettings, type UserSettings, type UserSettingsUpdate } from '@/api/users'
 import type { CurrentUser, ThemePreference } from '@/domain/users'
 import {
@@ -44,49 +44,52 @@ export function useUserSettings(user: CurrentUser): UserSettingsState {
     smsEnabled: user.smsEnabled,
   })
   const [themeError, setThemeError] = useState<string | null>(null)
-  const latestThemeSave = useRef(0)
+  const latestThemeSaveRef = useRef(0)
   const theme = useResolvedTheme(RESOLVER_PREFERENCE[savedSettings.themePreference])
 
-  function setTheme(themePreference: ThemePreference) {
-    setSavedSettings((current) => ({ ...current, themePreference }))
-  }
-
-  function selectThemePreference(preference: ThemePreference) {
-    if (preference === savedSettings.themePreference) {
-      return
+  // One object per change, so context consumers re-render only when a setting does.
+  return useMemo(() => {
+    function setTheme(themePreference: ThemePreference) {
+      setSavedSettings((current) => ({ ...current, themePreference }))
     }
 
-    const save = latestThemeSave.current + 1
-    const previous = savedSettings.themePreference
-
-    latestThemeSave.current = save
-    setTheme(preference)
-    setThemeError(null)
-
-    updateUserSettings(user.id, { themePreference: preference }).catch((error: unknown) => {
-      // A later choice already owns the theme, so this reply is obsolete.
-      if (latestThemeSave.current !== save) {
+    function selectThemePreference(preference: ThemePreference) {
+      if (preference === savedSettings.themePreference) {
         return
       }
 
-      setTheme(previous)
-      setThemeError(isApiError(error) ? error.message : THEME_SAVE_FAILED)
-    })
-  }
+      const save = latestThemeSaveRef.current + 1
+      const previous = savedSettings.themePreference
 
-  async function saveSettings(update: UserSettingsUpdate) {
-    const saved = await updateUserSettings(user.id, update)
+      latestThemeSaveRef.current = save
+      setTheme(preference)
+      setThemeError(null)
 
-    setSavedSettings(saved)
-    setThemeError(null)
-  }
+      updateUserSettings(user.id, { themePreference: preference }).catch((error: unknown) => {
+        // A later choice already owns the theme, so this reply is obsolete.
+        if (latestThemeSaveRef.current !== save) {
+          return
+        }
 
-  return {
-    savedSettings,
-    themePreference: savedSettings.themePreference,
-    theme,
-    themeError,
-    selectThemePreference,
-    saveSettings,
-  }
+        setTheme(previous)
+        setThemeError(errorMessage(error, THEME_SAVE_FAILED))
+      })
+    }
+
+    async function saveSettings(update: UserSettingsUpdate) {
+      const saved = await updateUserSettings(user.id, update)
+
+      setSavedSettings(saved)
+      setThemeError(null)
+    }
+
+    return {
+      savedSettings,
+      themePreference: savedSettings.themePreference,
+      theme,
+      themeError,
+      selectThemePreference,
+      saveSettings,
+    }
+  }, [savedSettings, theme, themeError, user.id])
 }

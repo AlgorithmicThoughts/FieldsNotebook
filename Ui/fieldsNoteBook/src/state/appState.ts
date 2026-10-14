@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, use } from 'react'
 import type { UserSettingsState } from './useUserSettings'
 import type { UnreadNoticesState } from './useUnreadNotices'
 
@@ -14,7 +14,7 @@ export type AppState = UserSettingsState & UnreadNoticesState
 export const AppStateContext = createContext<AppState | null>(null)
 
 export function useAppState(): AppState {
-  const state = useContext(AppStateContext)
+  const state = use(AppStateContext)
 
   if (state === null) {
     throw new Error('useAppState needs an AppStateProvider above it.')

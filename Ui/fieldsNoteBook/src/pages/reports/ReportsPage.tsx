@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
-import { isAbortError, isApiError } from '@/api/errors'
+import { useState } from 'react'
 import { getDelayReport } from '@/api/reports'
 import type { DelayReportRequest } from '@/domain/reports'
+import { useApiQuery } from '@/hooks/useApiQuery'
 import { useWorkspace } from '@/routes/useWorkspace'
 import { ReportPreview } from './components/ReportPreview'
 import { ReportScopeCard } from './components/ReportScopeCard'
-import { toPreviewView, type ReportState } from './reportsView'
+import { toPreviewView } from './reportsView'
 import { useDebouncedValue } from './useDebouncedValue'
 import { useDelayTags } from './useDelayTags'
 import './ReportsPage.css'
@@ -31,55 +31,26 @@ export function ReportsPage() {
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([user.activeProjectId])
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [reloadCount, setReloadCount] = useState(0)
-  const [state, setState] = useState<ReportState>({ key: null, status: 'idle' })
   const { tags, retry: retryTags } = useDelayTags()
 
   const settledDates = useDebouncedValue(`${dateFrom}|${dateTo}`, DATE_DEBOUNCE_MS)
-  const request = useMemo(
-    () => toRequest(selectedProjectIds, settledDates),
-    [selectedProjectIds, settledDates],
-  )
+  const request = toRequest(selectedProjectIds, settledDates)
   const hasScope = selectedProjectIds.length > 0
-  const requestKey = `${selectedProjectIds.join(',')}|${settledDates}|${reloadCount}`
+  // No project in scope means nothing to ask for, so the query stays idle.
+  const { state, reload } = useApiQuery(
+    hasScope ? `report:${selectedProjectIds.join(',')}|${settledDates}` : null,
+    (signal) => getDelayReport(request, { signal }),
+    GENERIC_ERROR,
+  )
 
-  useEffect(() => {
-    if (!hasScope) {
-      return
-    }
-
-    const controller = new AbortController()
-    const { signal } = controller
-
-    getDelayReport(request, { signal })
-      .then((rows) => {
-        if (!signal.aborted) {
-          setState({ key: requestKey, status: 'ready', rows })
-        }
-      })
-      .catch((error: unknown) => {
-        if (isAbortError(error) || signal.aborted) {
-          return
-        }
-
-        setState({
-          key: requestKey,
-          status: 'error',
-          message: isApiError(error) ? error.message : GENERIC_ERROR,
-        })
-      })
-
-    return () => controller.abort()
-  }, [hasScope, request, requestKey])
-
-  const view = toPreviewView(hasScope, state, requestKey, tags)
+  const view = toPreviewView(state, tags)
 
   /** Retries whichever request failed; a loaded tag list is kept. */
   function retry() {
     retryTags()
 
     if (state.status === 'error') {
-      setReloadCount((count) => count + 1)
+      reload()
     }
   }
 

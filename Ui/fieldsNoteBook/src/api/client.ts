@@ -94,19 +94,39 @@ function requestHeaders(body: unknown): Record<string, string> {
 }
 
 /**
- * The ProblemDetails title, followed by its detail when the API says why,
- * such as the reason a delay cannot take an action yet.
+ * The error body every endpoint returns. `title` is the HTTP reason phrase,
+ * such as "Not Found"; `detail` and `error.message` carry the same plain
+ * sentence; `error.code` is the stable category, such as not_found.
  */
-async function problemTitle(response: Response): Promise<string> {
-  try {
-    const problem = (await response.json()) as { title?: unknown; detail?: unknown };
-    const title = typeof problem.title === "string" ? problem.title : UNREACHABLE;
-    const detail = typeof problem.detail === "string" ? problem.detail.trim() : "";
+interface ApiProblem {
+  title?: unknown;
+  detail?: unknown;
+  error?: { code?: unknown; message?: unknown } | null;
+}
 
-    return detail === "" ? title : `${title} ${detail[0].toUpperCase()}${detail.slice(1)}`;
+/** The body of a failed response, or null when it is not JSON. */
+async function readProblem(response: Response): Promise<ApiProblem | null> {
+  try {
+    return (await response.json()) as ApiProblem;
   } catch {
-    return UNREACHABLE;
+    return null;
   }
+}
+
+function problemCode(problem: ApiProblem | null): string | null {
+  return typeof problem?.error?.code === "string" ? problem.error.code : null;
+}
+
+function nonEmpty(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+/**
+ * The sentence a page shows for a failed response: the structured message
+ * first, then the detail, then the bare reason phrase as a last resort.
+ */
+function problemMessage(problem: ApiProblem | null): string {
+  return nonEmpty(problem?.error?.message) ?? nonEmpty(problem?.detail) ?? nonEmpty(problem?.title) ?? UNREACHABLE;
 }
 
 function encodeBody(body: unknown): BodyInit | undefined {
@@ -143,7 +163,9 @@ async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, await problemTitle(response));
+    const problem = await readProblem(response);
+
+    throw new ApiError(response.status, problemMessage(problem), problemCode(problem));
   }
 
   return (await response.json()) as T;
@@ -167,7 +189,7 @@ export function apiPostForm<T>(path: string, body: FormData, options?: RequestOp
   return apiRequest<T>('POST', path, options, body)
 }
 
-/** A PATCH whose JSON body carries only the fields being changed. */
+/** A POST whose JSON body carries the new sub-resource. */
 export function apiPostJson<T>(
   path: string,
   body: unknown,

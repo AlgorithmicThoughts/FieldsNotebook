@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import {
   Field,
   FieldDescription,
@@ -63,16 +63,16 @@ export function FormField({
   children,
 }: FormFieldProps) {
   const id = `${name}-control`
+  const describedById = describedBy({ name, description, error })
+  const isInvalid: true | undefined = error ? true : undefined
+  const control = useMemo(
+    () => ({ id, 'aria-describedby': describedById, 'aria-invalid': isInvalid }),
+    [id, describedById, isInvalid],
+  )
 
   return (
     <Field data-invalid={error ? true : undefined} className={className}>
-      <FieldControlContext
-        value={{
-          id,
-          'aria-describedby': describedBy({ name, description, error }),
-          'aria-invalid': error ? true : undefined,
-        }}
-      >
+      <FieldControlContext value={control}>
         <div className="flex items-center justify-between gap-3">
           <FieldLabel htmlFor={id} className={`gap-0.5 ${APPROVED_LABEL}`}>
             {label}

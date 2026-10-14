@@ -20,7 +20,7 @@ export function ProfileMenu({
   onSignOut,
 }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const menu = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // The menu belongs to the document while it is open: a click anywhere else,
   // or Escape, closes it.
@@ -30,7 +30,7 @@ export function ProfileMenu({
     }
 
     const onPointerDown = (event: PointerEvent) => {
-      if (!menu.current?.contains(event.target as Node)) {
+      if (!menuRef.current?.contains(event.target as Node)) {
         setIsOpen(false)
       }
     }
@@ -51,7 +51,7 @@ export function ProfileMenu({
   }, [isOpen])
 
   return (
-    <div className="profile-menu" ref={menu}>
+    <div className="profile-menu" ref={menuRef}>
       <button
         type="button"
         className="profile"

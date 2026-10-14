@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { isAbortError, isApiError } from '@/api/errors'
+import { errorMessage, isAbortError } from '@/api/errors'
 import type { DelayDetail } from '@/domain/delays'
 import {
   submitDelayAction,
@@ -55,7 +55,7 @@ export function useDelayAction(delay: DelayDetail, onCompleted: () => void): Del
           return
         }
 
-        setError(isApiError(failure) ? failure.message : GENERIC_ERROR)
+        setError(errorMessage(failure, GENERIC_ERROR))
       })
   }
 

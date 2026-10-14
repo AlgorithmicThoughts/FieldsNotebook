@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { CurrentUser } from '@/domain/users'
 import { AppStateContext, type AppState } from './appState'
 import { useUserSettings } from './useUserSettings'
@@ -13,7 +13,7 @@ interface AppStateProviderProps {
 export function AppStateProvider({ user, children }: AppStateProviderProps) {
   const userSettings = useUserSettings(user)
   const unreadNotices = useUnreadNotices(user)
-  const state: AppState = { ...userSettings, ...unreadNotices }
+  const state = useMemo<AppState>(() => ({ ...userSettings, ...unreadNotices }), [userSettings, unreadNotices])
 
   return <AppStateContext value={state}>{children}</AppStateContext>
 }

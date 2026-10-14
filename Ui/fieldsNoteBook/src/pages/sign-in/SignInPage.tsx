@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { ArrowRight, CalendarDays, CirclePause, FileText } from 'lucide-react'
-import { isApiError } from '@/api/errors'
+import { errorMessage } from '@/api/errors'
 import { Button } from '@/components/common/Button'
 import { Card } from '@/components/common/Card'
 import { FormField } from '@/components/common/Field'
@@ -42,7 +42,7 @@ export function SignInPage() {
 
     signIn({ userId, password }).catch((failure: unknown) => {
       setIsSigningIn(false)
-      setError(isApiError(failure) ? failure.message : SIGN_IN_FAILED)
+      setError(errorMessage(failure, SIGN_IN_FAILED))
     })
   }
 

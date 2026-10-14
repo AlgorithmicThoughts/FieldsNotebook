@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { isAbortError, isApiError } from "@/api/errors";
+import { errorMessage, isAbortError, isApiError } from "@/api/errors";
 import { getUser, getUserOnProject } from "@/api/users";
 import { Button } from "@/components/common/Button";
 import { AppShell } from "@/components/layout/AppShell";
@@ -124,7 +124,7 @@ function WorkspaceLoader({ userId }: { userId: number }) {
         }),
       )
       .catch((error: unknown) => {
-        setSwitchError(isApiError(error) ? error.message : SWITCH_FAILED);
+        setSwitchError(errorMessage(error, SWITCH_FAILED));
       })
       .finally(() => setIsSwitchingProject(false));
   }
@@ -187,17 +187,17 @@ function WorkspaceShell({ user, project, projectSwitch }: WorkspaceProps) {
   const { signOut } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const focusedPath = useRef(pathname);
+  const focusedPathRef = useRef(pathname);
 
   // Keyboard users land in the new page rather than back in the sidebar. Comparing
   // paths, not a first-render flag, keeps StrictMode's repeated effect from focusing
   // the page on load, and preventScroll keeps the top bar in view.
   useEffect(() => {
-    if (focusedPath.current === pathname) {
+    if (focusedPathRef.current === pathname) {
       return;
     }
 
-    focusedPath.current = pathname;
+    focusedPathRef.current = pathname;
     document.getElementById("main")?.focus({ preventScroll: true });
   }, [pathname]);
 
@@ -223,7 +223,7 @@ function WorkspaceShell({ user, project, projectSwitch }: WorkspaceProps) {
             selectThemePreference(theme === "dark" ? "Light" : "Dark")
           }
           onProjectChange={projectSwitch.change}
-          onNotificationsOpen={() => navigate("/notifications")}
+          onNotificationsOpen={() => void navigate("/notifications")}
           onSignOut={signOut}
         />
       }

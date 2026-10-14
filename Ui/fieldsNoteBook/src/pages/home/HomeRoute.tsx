@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getProjectHome, type ProjectHome } from '@/api/home'
-import { isAbortError, isApiError } from '@/api/errors'
 import { Button } from '@/components/common/Button'
 import { Card } from '@/components/common/Card'
 import { AddDelayModal } from '@/components/delays/AddDelayModal'
 import type { DelaySummary } from '@/domain/delays'
 import { canReportDelay } from '@/domain/permissions'
 import { crewLabel } from '@/domain/users'
+import { useApiQuery } from '@/hooks/useApiQuery'
 import { formatProjectDate, formatProjectTime } from '@/lib/projectTime'
 import { useWorkspace } from '@/routes/useWorkspace'
 import { HomePage } from './HomePage'
@@ -19,16 +19,13 @@ interface HomeData {
   fetchedAt: Date
 }
 
-/**
- * `key` records the request the result belongs to. A late reply for another
- * project, or for a previous attempt, no longer matches and never renders.
- */
-type HomeState =
-  | { key: null }
-  | { key: string; status: 'error'; message: string }
-  | { key: string; status: 'ready'; data: HomeData }
-
 const GENERIC_ERROR = 'Field Notebook could not load the delays for this project.'
+
+async function loadHome(projectId: number, signal: AbortSignal): Promise<HomeData> {
+  const home = await getProjectHome(projectId, { signal })
+
+  return { home, fetchedAt: new Date() }
+}
 
 /**
  * Loads Home's data. Entering the route refreshes the delays, as the business
@@ -38,61 +35,25 @@ export function HomeRoute() {
   const { user } = useWorkspace()
   const navigate = useNavigate()
   const projectId = user.activeProjectId
-  const [state, setState] = useState<HomeState>({ key: null })
-  const [reloadCount, setReloadCount] = useState(0)
   const [isReportOpen, setIsReportOpen] = useState(false)
-  const requestKey = `${projectId}:${reloadCount}`
+  const { state, reload, update } = useApiQuery(
+    `home:${projectId}`,
+    (signal) => loadHome(projectId, signal),
+    GENERIC_ERROR,
+  )
 
   /**
    * A delay the Foreman just raised joins the list without another request.
    * The counts refresh on the next visit, when the API includes it.
    */
   function addDelay(delay: DelaySummary) {
-    setState((current) =>
-      current.key !== null && current.status === 'ready'
-        ? {
-            ...current,
-            data: {
-              ...current.data,
-              home: { ...current.data.home, attentionDelays: [delay, ...current.data.home.attentionDelays] },
-            },
-          }
-        : current,
-    )
+    update((data) => ({
+      ...data,
+      home: { ...data.home, attentionDelays: [delay, ...data.home.attentionDelays] },
+    }))
   }
 
-  useEffect(() => {
-    const controller = new AbortController()
-    const { signal } = controller
-
-    getProjectHome(projectId, { signal })
-      .then((home) => {
-        if (signal.aborted) {
-          return
-        }
-
-        setState({
-          key: requestKey,
-          status: 'ready',
-          data: { home, fetchedAt: new Date() },
-        })
-      })
-      .catch((error: unknown) => {
-        if (isAbortError(error) || signal.aborted) {
-          return
-        }
-
-        setState({
-          key: requestKey,
-          status: 'error',
-          message: isApiError(error) ? error.message : GENERIC_ERROR,
-        })
-      })
-
-    return () => controller.abort()
-  }, [projectId, requestKey])
-
-  if (state.key !== requestKey) {
+  if (state.status === 'idle' || state.status === 'loading') {
     return <HomeSkeleton />
   }
 
@@ -105,7 +66,7 @@ export function HomeRoute() {
           <Button
             label="Try again"
             variant="primary"
-            onClick={() => setReloadCount((count) => count + 1)}
+            onClick={reload}
           />
         </div>
       </Card>
@@ -130,8 +91,8 @@ export function HomeRoute() {
         activityBadgeLabel={toActivityBadgeLabel(home.recentActivity, fetchedAt)}
         lastCheckedLabel={formatProjectTime(fetchedAt)}
         onReportDelay={() => setIsReportOpen(true)}
-        onOpenDelay={(delayNumber) => navigate(`/tracking?delay=${delayNumber}`)}
-        onViewAllDelays={() => navigate('/tracking')}
+        onOpenDelay={(delayNumber) => void navigate(`/tracking?delay=${delayNumber}`)}
+        onViewAllDelays={() => void navigate('/tracking')}
       />
 
       <AddDelayModal

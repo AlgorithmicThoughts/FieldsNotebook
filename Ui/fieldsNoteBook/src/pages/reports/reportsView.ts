@@ -1,4 +1,5 @@
 import type { DelayReportRow } from '@/domain/reports'
+import type { ApiQueryState } from '@/hooks/useApiQuery'
 
 /**
  * DelayStatus.Name for a resolved delay. A revoked delay also carries a
@@ -60,15 +61,8 @@ export type PreviewView =
   | { kind: 'error'; message: string }
   | { kind: 'ready'; rows: DelayReportRow[]; tagNames: string[] }
 
-/**
- * The report result the page may render. `key` records the request the result
- * belongs to, so a late reply for an earlier scope no longer matches and never
- * shows.
- */
-export type ReportState =
-  | { key: null; status: 'idle' }
-  | { key: string; status: 'error'; message: string }
-  | { key: string; status: 'ready'; rows: DelayReportRow[] }
+/** The report result the page may render; `idle` until a project is in scope. */
+export type ReportState = ApiQueryState<DelayReportRow[]>
 
 /**
  * The approved reason tags. They never change with the scope, so the page
@@ -81,33 +75,25 @@ export type TagState =
 
 type ReportView = Exclude<PreviewView, { kind: 'ready' }> | { kind: 'ready'; rows: DelayReportRow[] }
 
-function toReportView(hasScope: boolean, state: ReportState, requestKey: string): ReportView {
-  if (!hasScope) {
-    return { kind: 'no-scope' }
+function toReportView(state: ReportState): ReportView {
+  switch (state.status) {
+    case 'idle':
+      return { kind: 'no-scope' }
+    case 'loading':
+      return { kind: 'loading' }
+    case 'error':
+      return { kind: 'error', message: state.message }
+    case 'ready':
+      return { kind: 'ready', rows: state.data }
   }
-
-  if (state.status === 'idle' || state.key !== requestKey) {
-    return { kind: 'loading' }
-  }
-
-  if (state.status === 'error') {
-    return { kind: 'error', message: state.message }
-  }
-
-  return { kind: 'ready', rows: state.rows }
 }
 
 /**
  * The breakdown lists every approved tag, so rows render only once the tags
  * are in hand too; a partial breakdown never reaches the screen.
  */
-export function toPreviewView(
-  hasScope: boolean,
-  state: ReportState,
-  requestKey: string,
-  tags: TagState,
-): PreviewView {
-  const report = toReportView(hasScope, state, requestKey)
+export function toPreviewView(state: ReportState, tags: TagState): PreviewView {
+  const report = toReportView(state)
 
   if (report.kind !== 'ready') {
     return report

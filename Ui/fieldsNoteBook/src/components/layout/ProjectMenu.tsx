@@ -30,7 +30,7 @@ export function ProjectMenu({
   onSelectProject,
 }: ProjectMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const menu = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // The menu belongs to the document while it is open: a click anywhere else,
   // or Escape, closes it.
@@ -40,7 +40,7 @@ export function ProjectMenu({
     }
 
     const onPointerDown = (event: PointerEvent) => {
-      if (!menu.current?.contains(event.target as Node)) {
+      if (!menuRef.current?.contains(event.target as Node)) {
         setIsOpen(false)
       }
     }
@@ -69,7 +69,7 @@ export function ProjectMenu({
   }
 
   return (
-    <div className="project-menu" ref={menu}>
+    <div className="project-menu" ref={menuRef}>
       <button
         type="button"
         className="project-button"

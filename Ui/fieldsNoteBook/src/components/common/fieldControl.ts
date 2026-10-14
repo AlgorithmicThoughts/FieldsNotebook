@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, use } from 'react'
 
 /** What a labelled control inside a `FormField` needs to be announced right. */
 export interface FieldControlAttributes {
@@ -14,5 +14,5 @@ export const FieldControlContext = createContext<FieldControlAttributes | null>(
  * control does not repeat it. A control used outside one gets nothing.
  */
 export function useFieldControl(): Partial<FieldControlAttributes> {
-  return useContext(FieldControlContext) ?? {}
+  return use(FieldControlContext) ?? {}
 }

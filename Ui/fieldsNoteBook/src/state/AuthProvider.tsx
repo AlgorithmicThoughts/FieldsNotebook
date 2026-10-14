@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { signIn as requestSignIn, type Credentials } from '@/api/auth'
 import type { AuthSession } from '@/domain/auth'
 import { AuthContext, type AuthState } from './auth'
@@ -12,19 +12,23 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<AuthSession | null>(readAuthSession)
 
-  async function signIn(credentials: Credentials) {
-    const next = await requestSignIn(credentials)
+  // The actions only call the stable setter, so the value changes only with the session.
+  const state = useMemo<AuthState>(
+    () => ({
+      session,
+      async signIn(credentials: Credentials) {
+        const next = await requestSignIn(credentials)
 
-    writeAuthSession(next)
-    setSession(next)
-  }
-
-  function signOut() {
-    clearAuthSession()
-    setSession(null)
-  }
-
-  const state: AuthState = { session, signIn, signOut }
+        writeAuthSession(next)
+        setSession(next)
+      },
+      signOut() {
+        clearAuthSession()
+        setSession(null)
+      },
+    }),
+    [session],
+  )
 
   return <AuthContext value={state}>{children}</AuthContext>
 }

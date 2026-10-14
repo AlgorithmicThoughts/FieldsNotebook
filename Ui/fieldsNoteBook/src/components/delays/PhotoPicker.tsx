@@ -37,18 +37,18 @@ interface PhotoPickerProps {
 
 /** One to five photos for a report or a resolution's proof of work, with EXIF GPS when a file has it. */
 export function PhotoPicker({ photos, onChange, disabled, onReadingChange }: PhotoPickerProps) {
-  const libraryInput = useRef<HTMLInputElement>(null)
-  const alive = useRef(false)
-  const reading = useRef(false)
+  const libraryInputRef = useRef<HTMLInputElement>(null)
+  const aliveRef = useRef(false)
+  const readingRef = useRef(false)
   const [isReading, setIsReading] = useState(false)
 
   useEffect(() => {
-    alive.current = true
-    return () => { alive.current = false }
+    aliveRef.current = true
+    return () => { aliveRef.current = false }
   }, [])
 
   function finishRead(added: PhotoDraft[]) {
-    if (!alive.current) {
+    if (!aliveRef.current) {
       added.forEach((photo) => URL.revokeObjectURL(photo.previewUrl))
       return
     }
@@ -58,8 +58,8 @@ export function PhotoPicker({ photos, onChange, disabled, onReadingChange }: Pho
   }
 
   async function addFiles(event: ChangeEvent<HTMLInputElement>) {
-    if (reading.current || disabled) return
-    reading.current = true
+    if (readingRef.current || disabled) return
+    readingRef.current = true
     setIsReading(true)
     onReadingChange(true)
     const chosen = Array.from(event.target.files ?? []).slice(0, MAX_PHOTOS - photos.length)
@@ -70,7 +70,7 @@ export function PhotoPicker({ photos, onChange, disabled, onReadingChange }: Pho
     try {
       finishRead(await Promise.all(chosen.map(toPhotoDraft)))
     } finally {
-      reading.current = false
+      readingRef.current = false
     }
   }
 
@@ -122,7 +122,7 @@ export function PhotoPicker({ photos, onChange, disabled, onReadingChange }: Pho
             label="Add photo"
             icon={Images}
             disabled={uploadDisabled}
-            onClick={() => libraryInput.current?.click()}
+            onClick={() => libraryInputRef.current?.click()}
           />
         </div>
         <p className="mt-[10px] text-[12px] text-muted-foreground">
@@ -131,12 +131,12 @@ export function PhotoPicker({ photos, onChange, disabled, onReadingChange }: Pho
       </div>
 
       <input
-        ref={libraryInput}
+        ref={libraryInputRef}
         type="file"
         accept={ACCEPTED_TYPES}
         multiple
         hidden
-        onChange={addFiles}
+        onChange={(event) => void addFiles(event)}
       />
     </div>
   )
