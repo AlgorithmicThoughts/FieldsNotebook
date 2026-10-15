@@ -24,10 +24,11 @@ const EVENT_TITLES: Record<string, string> = {
   'delay.expectedReadyChanged': 'Estimate updated',
   // The database records a revised completion time as delay.readyTimeUpdated.
   'delay.readyTimeUpdated': 'Estimate updated',
-  'delay.readyForHandover': 'Ready for verification',
-  'delay.handoverCheckRequested': 'Handover check requested',
-  'delay.handoverVerified': 'Handover verified',
-  'delay.resolved': 'Delay resolved',
+  'delay.readyForHandover': 'Submitted for review',
+  'delay.handoverCheckRequested': 'Submitted for review',
+  'delay.handoverVerified': 'Proof of work accepted',
+  'delay.handoverReturned': 'Sent back for rework',
+  'delay.resolved': 'Delay closed',
   'delay.reopened': 'Delay reopened',
   'delay.revoked': 'Delay withdrawn',
 }

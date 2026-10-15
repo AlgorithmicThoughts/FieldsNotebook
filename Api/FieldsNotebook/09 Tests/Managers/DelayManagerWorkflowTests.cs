@@ -42,6 +42,10 @@ public class DelayManagerWorkflowTests
     private const int OwnerContactId = 21;
     private const int AffectedForemanId = 41;
     private const int AffectedSuperintendentId = 42;
+    private const int OwnerForemanId = 22;
+    private const int OtherAffectedCrewId = 50;
+    private const int OtherImpactId = 11;
+    private const int OtherAffectedForemanId = 51;
 
     [Fact]
     public async Task AcknowledgeAsync_ResponsibleSuperintendent_AcknowledgesCycleAndAppendsEvent()
@@ -73,14 +77,14 @@ public class DelayManagerWorkflowTests
     }
 
     [Fact]
-    public async Task AcknowledgeAsync_WorkIsAlreadyReady_AsksForTheHandoverCheckInTheSameTransaction()
+    public async Task AcknowledgeAsync_WorkIsAlreadyReady_RecordsTheAnswerWithoutSubmittingForReview()
     {
         // Arrange
         var mocks = new DelayManagerMocks();
         GrantAccess(mocks, RoleNames.Superintendent, Directs(OwnerCrewId));
         SetState(mocks, StateOf(DelayStatusCodes.Raised));
         ProvideCrewContacts(mocks, new(OwnerCrewId, OwnerContactId), new(AffectedCrewId, AffectedForemanId));
-        var applied = AcceptWrites(mocks, new DelayWorkflowResult(CycleId, 4901, 0));
+        var applied = AcceptWrites(mocks, new DelayWorkflowResult(CycleId, 4901, 1));
         var request = new AcknowledgeDelayRequest(DelayAcknowledgmentChoices.ReadyForHandover, null, null);
 
         // Act
@@ -88,12 +92,10 @@ public class DelayManagerWorkflowTests
 
         // Assert
         var response = ResultAssert.Succeeded(result);
-        Assert.Equal((DelayStatusCodes.ReadyForHandover, DelayEventTypes.ReadyForHandover), (response.StatusCode, response.EventType));
-        var writes = Assert.Single(applied).Writes;
-        Assert.Equal([DelayEventTypes.Acknowledged, DelayEventTypes.ReadyForHandover], writes.Select(w => w.EventType));
-        Assert.Equal(DelayStatusCodes.Acknowledged, writes[1].FromStatusCode);
-        Assert.Equal(CycleId, writes[1].Cycle.CycleId);
-        Assert.Null(writes[1].Cycle.Acknowledgment);
+        Assert.Equal((DelayStatusCodes.Acknowledged, DelayEventTypes.Acknowledged), (response.StatusCode, response.EventType));
+        var write = Assert.Single(Assert.Single(applied).Writes);
+        Assert.Equal(DelayAcknowledgmentChoices.ReadyForHandover, write.Cycle.Acknowledgment?.Choice);
+        Assert.Empty(write.ProofOfWorkPhotos);
     }
 
     [Fact]
@@ -192,12 +194,15 @@ public class DelayManagerWorkflowTests
     }
 
     [Fact]
-    public async Task VerifyHandoverAsync_AffectedCrewForeman_StoresTheCheckAgainstTheImpactAndCycle()
+    public async Task VerifyHandoverAsync_AnotherCrewStillReviewing_AcceptsForThisCrewOnly()
     {
         // Arrange
         var mocks = new DelayManagerMocks();
         GrantAccess(mocks, RoleNames.Foreman, Leads(AffectedCrewId));
-        SetState(mocks, StateOf(DelayStatusCodes.ReadyForHandover));
+        SetState(mocks, StateOf(DelayStatusCodes.ReadyForHandover) with
+        {
+            Impacts = [new(ImpactId, AffectedCrewId, false), new(OtherImpactId, OtherAffectedCrewId, false)],
+        });
         // The actor is an owner crew contact too, so only the other owner contact hears of the check.
         ProvideCrewContacts(mocks, new(OwnerCrewId, UserId), new(OwnerCrewId, OwnerContactId), new(AffectedCrewId, AffectedForemanId));
         var applied = AcceptWrites(mocks, new DelayWorkflowResult(CycleId, 4903, 1));
@@ -252,33 +257,73 @@ public class DelayManagerWorkflowTests
     }
 
     [Fact]
-    public async Task ResolveAsync_AffectedCrewHasNotVerified_RefusesBeforeAnyWrite()
+    public async Task VerifyHandoverAsync_LastWaitingCrew_ClosesTheDelayAndNotifiesTheResponsibleCrew()
     {
         // Arrange
         var mocks = new DelayManagerMocks();
-        GrantAccess(mocks, RoleNames.Superintendent, Directs(OwnerCrewId));
-        SetState(mocks, StateOf(DelayStatusCodes.ReadyForHandover));
+        GrantAccess(mocks, RoleNames.Foreman, Leads(AffectedCrewId));
+        SetState(mocks, StateOf(DelayStatusCodes.ReadyForHandover) with
+        {
+            Impacts = [new(ImpactId, AffectedCrewId, false), new(OtherImpactId, OtherAffectedCrewId, true)],
+        });
+        ProvideCrewContacts(mocks, new(OwnerCrewId, OwnerContactId), new(OwnerCrewId, OwnerForemanId),
+            new(AffectedCrewId, UserId), new(OtherAffectedCrewId, OtherAffectedForemanId));
+        var applied = AcceptWrites(mocks, new DelayWorkflowResult(CycleId, 4904, 3));
 
         // Act
-        var result = await CreateMockManager(mocks).ResolveAsync(UserId, ProjectId, DelayId, ProofOfWork(), CancellationToken.None);
+        var result = await CreateMockManager(mocks).VerifyHandoverAsync(UserId, ProjectId, DelayId, ImpactId,
+            new VerifyHandoverRequest("Bay is clear."), CancellationToken.None);
 
         // Assert
-        ResultAssert.Failed(ErrorCodes.Conflict, result);
-        AssertNothingWritten(mocks);
+        var response = ResultAssert.Succeeded(result);
+        Assert.Equal((DelayStatusCodes.Resolved, DelayEventTypes.Resolved), (response.StatusCode, response.EventType));
+        var writes = Assert.Single(applied).Writes;
+        Assert.Equal([DelayEventTypes.HandoverVerified, DelayEventTypes.Resolved], writes.Select(w => w.EventType));
+        Assert.Equal(new DelayVerificationChange(ImpactId, "Bay is clear."), writes[0].Verification);
+        // The closing step tells everyone once, so the acceptance itself notifies nobody.
+        Assert.Empty(writes[0].RecipientUserIds);
+        Assert.Equal((DelayStatusCodes.ReadyForHandover, DelayStatusCodes.Resolved), (writes[1].FromStatusCode, writes[1].ToStatusCode));
+        Assert.True(writes[1].Cycle.Close);
+        Assert.Equal([OwnerContactId, OwnerForemanId, OtherAffectedForemanId], writes[1].RecipientUserIds);
+    }
+
+    [Fact]
+    public async Task ReturnHandoverAsync_AffectedCrewForeman_SendsTheDelayBackWithTheReason()
+    {
+        // Arrange
+        var mocks = new DelayManagerMocks();
+        GrantAccess(mocks, RoleNames.Foreman, Leads(AffectedCrewId));
+        SetState(mocks, StateOf(DelayStatusCodes.ReadyForHandover));
+        ProvideCrewContacts(mocks, new(OwnerCrewId, OwnerContactId), new(OwnerCrewId, OwnerForemanId), new(AffectedCrewId, UserId));
+        var applied = AcceptWrites(mocks, new DelayWorkflowResult(CycleId, 4905, 2));
+
+        // Act
+        var result = await CreateMockManager(mocks).ReturnHandoverAsync(UserId, ProjectId, DelayId, ImpactId,
+            new ReturnHandoverRequest("  The east bay still has rebar on the deck.  "), CancellationToken.None);
+
+        // Assert
+        var response = ResultAssert.Succeeded(result);
+        Assert.Equal((DelayStatusCodes.Acknowledged, DelayEventTypes.HandoverReturned), (response.StatusCode, response.EventType));
+        var write = Assert.Single(Assert.Single(applied).Writes);
+        Assert.Equal((DelayStatusCodes.ReadyForHandover, DelayStatusCodes.Acknowledged), (write.FromStatusCode, write.ToStatusCode));
+        Assert.Equal(new DelayReturnChange(ImpactId, "The east bay still has rebar on the deck."), write.Return);
+        Assert.Null(write.Verification);
+        Assert.Equal([OwnerContactId, OwnerForemanId], write.RecipientUserIds);
     }
 
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
-    public async Task ResolveAsync_WithoutProofOfWorkPhotos_RefusesBeforeAnyWrite(int cycleCount)
+    public async Task RequestHandoverCheckAsync_WithoutProofOfWorkPhotos_RefusesBeforeAnyWrite(int cycleCount)
     {
         // Arrange
         var mocks = new DelayManagerMocks();
         GrantAccess(mocks, RoleNames.Superintendent, Directs(OwnerCrewId));
-        SetState(mocks, VerifiedState() with { CycleCount = cycleCount });
+        SetState(mocks, StateOf(DelayStatusCodes.Acknowledged) with { CycleCount = cycleCount });
 
         // Act
-        var result = await CreateMockManager(mocks).ResolveAsync(UserId, ProjectId, DelayId, new ResolveDelayRequest(), CancellationToken.None);
+        var result = await CreateMockManager(mocks).RequestHandoverCheckAsync(UserId, ProjectId, DelayId, new RequestHandoverCheckRequest(),
+            CancellationToken.None);
 
         // Assert
         ResultAssert.Failed(ErrorCodes.InvalidRequest, result);
@@ -286,17 +331,17 @@ public class DelayManagerWorkflowTests
     }
 
     [Fact]
-    public async Task ResolveAsync_ProofOfWorkIsNotAnImage_RefusesBeforeAnyWrite()
+    public async Task RequestHandoverCheckAsync_ProofOfWorkIsNotAnImage_RefusesBeforeAnyWrite()
     {
         // Arrange
         var mocks = new DelayManagerMocks();
         GrantAccess(mocks, RoleNames.Superintendent, Directs(OwnerCrewId));
-        SetState(mocks, VerifiedState());
+        SetState(mocks, StateOf(DelayStatusCodes.Acknowledged));
         var request = ProofOfWork();
         request.Photos[0].File = Photo("notes.txt", "text/plain");
 
         // Act
-        var result = await CreateMockManager(mocks).ResolveAsync(UserId, ProjectId, DelayId, request, CancellationToken.None);
+        var result = await CreateMockManager(mocks).RequestHandoverCheckAsync(UserId, ProjectId, DelayId, request, CancellationToken.None);
 
         // Assert
         ResultAssert.Failed(ErrorCodes.InvalidRequest, result);
@@ -304,45 +349,50 @@ public class DelayManagerWorkflowTests
     }
 
     [Fact]
-    public async Task ResolveAsync_EveryCheckDone_ClosesTheCycleAndNotifiesBothCrews()
+    public async Task RequestHandoverCheckAsync_ResponsibleCrewForeman_SubmitsTheProofOfWorkForReview()
     {
         // Arrange
         var mocks = new DelayManagerMocks();
-        var resolvedAt = new DateTimeOffset(2026, 10, 12, 15, 30, 0, TimeSpan.Zero);
-        mocks.ClockUtility.Setup(c => c.UtcNow).Returns(resolvedAt);
-        GrantAccess(mocks, RoleNames.Superintendent, Directs(OwnerCrewId));
-        SetState(mocks, VerifiedState());
+        var submittedAt = new DateTimeOffset(2026, 10, 12, 15, 30, 0, TimeSpan.Zero);
+        mocks.ClockUtility.Setup(c => c.UtcNow).Returns(submittedAt);
+        GrantAccess(mocks, RoleNames.Foreman, Leads(OwnerCrewId));
+        // The other crew accepted before an earlier send-back, so only this crew is asked to review again.
+        SetState(mocks, StateOf(DelayStatusCodes.Acknowledged) with
+        {
+            Impacts = [new(ImpactId, AffectedCrewId, false), new(OtherImpactId, OtherAffectedCrewId, true)],
+        });
         ProvideCrewContacts(mocks, new(OwnerCrewId, UserId), new(OwnerCrewId, OwnerContactId),
-            new(AffectedCrewId, AffectedForemanId), new(AffectedCrewId, AffectedSuperintendentId));
+            new(AffectedCrewId, AffectedForemanId), new(AffectedCrewId, AffectedSuperintendentId),
+            new(OtherAffectedCrewId, OtherAffectedForemanId));
         StoreProofOfWork(mocks);
-        var applied = AcceptWrites(mocks, new DelayWorkflowResult(CycleId, 4904, 3));
+        var applied = AcceptWrites(mocks, new DelayWorkflowResult(CycleId, 4906, 2));
 
         // Act
-        var result = await CreateMockManager(mocks).ResolveAsync(UserId, ProjectId, DelayId, ProofOfWork(), CancellationToken.None);
+        var result = await CreateMockManager(mocks).RequestHandoverCheckAsync(UserId, ProjectId, DelayId, ProofOfWork(), CancellationToken.None);
 
         // Assert
         var response = ResultAssert.Succeeded(result);
-        Assert.Equal((DelayStatusCodes.Resolved, DelayEventTypes.Resolved), (response.StatusCode, response.EventType));
+        Assert.Equal((DelayStatusCodes.ReadyForHandover, DelayEventTypes.ReadyForHandover), (response.StatusCode, response.EventType));
         var (writes, recordedPhotos) = Assert.Single(applied);
         var write = Assert.Single(writes);
-        Assert.True(write.Cycle.Close);
-        Assert.Equal((CycleId, resolvedAt), (write.Cycle.CycleId, write.OccurredAt));
+        Assert.False(write.Cycle.Close);
+        Assert.Equal((CycleId, submittedAt), (write.Cycle.CycleId, write.OccurredAt));
         var photo = Assert.Single(write.ProofOfWorkPhotos);
         Assert.Equal(("fixed.jpg", "image/jpeg"), (photo.FileName, photo.ContentType));
-        Assert.Equal([OwnerContactId, AffectedForemanId, AffectedSuperintendentId], write.RecipientUserIds);
-        mocks.DelayPhotoAccessor.Verify(a => a.StoreProofOfWorkPhotosAsync(ProjectId, DelayId, CycleId, resolvedAt,
+        Assert.Equal([AffectedForemanId, AffectedSuperintendentId], write.RecipientUserIds);
+        mocks.DelayPhotoAccessor.Verify(a => a.StoreProofOfWorkPhotosAsync(ProjectId, DelayId, CycleId, submittedAt,
             It.IsAny<IReadOnlyList<ReportPhotoUploadRecord>>(), It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal("stored/fixed.jpg", Assert.Single(recordedPhotos).OriginalUrl);
         mocks.DelayPhotoAccessor.Verify(a => a.RemoveAsync(It.IsAny<StoredPhotoSet>()), Times.Never);
     }
 
     [Fact]
-    public async Task ResolveAsync_AnotherActionMovedTheDelayFirst_RemovesTheStoredProofOfWork()
+    public async Task RequestHandoverCheckAsync_AnotherActionMovedTheDelayFirst_RemovesTheStoredProofOfWork()
     {
         // Arrange
         var mocks = new DelayManagerMocks();
         GrantAccess(mocks, RoleNames.Superintendent, Directs(OwnerCrewId));
-        SetState(mocks, VerifiedState());
+        SetState(mocks, StateOf(DelayStatusCodes.Acknowledged));
         ProvideCrewContacts(mocks, new(OwnerCrewId, OwnerContactId), new(AffectedCrewId, AffectedForemanId));
         StoreProofOfWork(mocks);
         mocks.DelayWorkflowAccessor
@@ -350,7 +400,7 @@ public class DelayManagerWorkflowTests
             .ReturnsAsync(Result<DelayWorkflowResult>.Failure(DelayErrors.StateConflict(DelayId, "another action changed its status first.")));
 
         // Act
-        var result = await CreateMockManager(mocks).ResolveAsync(UserId, ProjectId, DelayId, ProofOfWork(), CancellationToken.None);
+        var result = await CreateMockManager(mocks).RequestHandoverCheckAsync(UserId, ProjectId, DelayId, ProofOfWork(), CancellationToken.None);
 
         // Assert
         ResultAssert.Failed(ErrorCodes.Conflict, result);
@@ -358,12 +408,12 @@ public class DelayManagerWorkflowTests
     }
 
     [Fact]
-    public async Task ResolveAsync_AccessorFails_RemovesTheStoredProofOfWorkAndPropagatesTheFailure()
+    public async Task RequestHandoverCheckAsync_AccessorFails_RemovesTheStoredProofOfWorkAndPropagatesTheFailure()
     {
         // Arrange
         var mocks = new DelayManagerMocks();
         GrantAccess(mocks, RoleNames.Superintendent, Directs(OwnerCrewId));
-        SetState(mocks, VerifiedState());
+        SetState(mocks, StateOf(DelayStatusCodes.Acknowledged));
         ProvideCrewContacts(mocks, new(OwnerCrewId, OwnerContactId), new(AffectedCrewId, AffectedForemanId));
         StoreProofOfWork(mocks);
         mocks.DelayWorkflowAccessor
@@ -372,10 +422,10 @@ public class DelayManagerWorkflowTests
         var manager = CreateMockManager(mocks);
 
         // Act
-        var resolve = () => manager.ResolveAsync(UserId, ProjectId, DelayId, ProofOfWork(), CancellationToken.None);
+        var submit = () => manager.RequestHandoverCheckAsync(UserId, ProjectId, DelayId, ProofOfWork(), CancellationToken.None);
 
         // Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(resolve);
+        await Assert.ThrowsAsync<InvalidOperationException>(submit);
         mocks.DelayPhotoAccessor.Verify(a => a.RemoveAsync(It.Is<StoredPhotoSet>(p => p.StorageKeys.Single() == "stored/fixed.jpg")), Times.Once);
     }
 
@@ -580,17 +630,9 @@ public class DelayManagerWorkflowTests
             null, [new DelayWorkflowImpactRecord(ImpactId, AffectedCrewId, false)]);
     }
 
-    private static DelayWorkflowState VerifiedState()
+    private static RequestHandoverCheckRequest ProofOfWork()
     {
-        return StateOf(DelayStatusCodes.ReadyForHandover) with
-        {
-            Impacts = [new DelayWorkflowImpactRecord(ImpactId, AffectedCrewId, true)],
-        };
-    }
-
-    private static ResolveDelayRequest ProofOfWork()
-    {
-        return new ResolveDelayRequest
+        return new RequestHandoverCheckRequest
         {
             Photos = [new() { File = Photo("fixed.jpg", "image/jpeg"), Thumbnail = Photo("thumbnail.jpg", "image/jpeg") }],
         };

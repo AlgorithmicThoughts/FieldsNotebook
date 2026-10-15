@@ -87,6 +87,24 @@ public class DelayInsightManagerHomeTests
     }
 
     [Fact]
+    public async Task GetHomeAsync_OurCrewAcceptedWhileAnotherReviews_NoLongerCountsAsBlocked()
+    {
+        // Arrange
+        var mocks = new DelayInsightManagerMocks();
+        GrantAccess(mocks, RoleNames.Foreman, WeldingForeman());
+        var underReview = Delay(5, "FN-005", SteelFitUp, DelayStatusCodes.ReadyForHandover, DelayReportTypes.AfterArrival, cycles: 1);
+        ReportDelays(mocks, new ActiveDelaySet([underReview],
+            [Impact(5, Welding, "Welding and Erection") with { IsVerifiedInOpenCycle = true }, Impact(5, Coatings, "Coatings")]));
+
+        // Act
+        var result = await CreateMockManager(mocks).GetHomeAsync(UserId, ProjectId, CancellationToken.None);
+
+        // Assert
+        var home = ResultAssert.Succeeded(result);
+        Assert.Equal((0, 0), (home.Metrics.BlockingOurCrews, home.Metrics.ReadyToVerify));
+    }
+
+    [Fact]
     public async Task GetHomeAsync_ManyActiveDelays_ListsTheAttentionLimitButCountsAll()
     {
         // Arrange

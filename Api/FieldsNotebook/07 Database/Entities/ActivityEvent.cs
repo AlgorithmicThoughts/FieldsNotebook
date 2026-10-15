@@ -14,5 +14,8 @@ public partial class ActivityEvent
     public int? ToDelayStatusId { get; set; }
     public DateTimeOffset? OldExpectedReadyAt { get; set; }
     public DateTimeOffset? NewExpectedReadyAt { get; set; }
+
+    /// <summary>Why an affected crew's Foreman sent the proof of work back. Set only on delay.handoverReturned.</summary>
+    public string? ReturnReason { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }

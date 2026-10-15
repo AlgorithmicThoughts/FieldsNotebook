@@ -34,6 +34,12 @@ public sealed partial class DelayInsightEngine : IDelayInsightEngine
 
     private static bool IsAdvanceNotice(string reportType) => reportType == DelayReportTypes.AdvanceNotice;
 
+    /// <summary>
+    /// Each affected crew closes the delay for itself: once its Foreman accepts the proof of work in the open
+    /// cycle, that crew is no longer blocked, even while other crews are still reviewing.
+    /// </summary>
+    private static bool IsStillBlocked(ActiveDelayImpactRecord impact) => impact.IsVerifiedInOpenCycle is false;
+
     /// <summary>The delay waits on a handover check by one of the given affected crews in the current cycle.</summary>
     private static bool AwaitsHandoverCheck(string statusCode, IEnumerable<ActiveDelayImpactRecord> impacts, IReadOnlySet<int> crewIds) =>
         statusCode == DelayStatusCodes.ReadyForHandover

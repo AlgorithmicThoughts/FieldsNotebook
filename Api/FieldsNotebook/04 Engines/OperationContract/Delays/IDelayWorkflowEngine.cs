@@ -26,14 +26,20 @@ public interface IDelayWorkflowEngine : IEngine
     /// <summary>The responsible Superintendent revises the tentative completion time of the active cycle.</summary>
     Result<IReadOnlyList<DelayWorkflowWrite>> ReviseCompletionTime(DelayWorkflowContext context, DateTimeOffset? expectedReadyAt);
 
-    /// <summary>The responsible Superintendent asks the affected crews' Foremen for a handover check.</summary>
-    Result<IReadOnlyList<DelayWorkflowWrite>> RequestHandoverCheck(DelayWorkflowContext context);
+    /// <summary>
+    /// The responsible crew's Superintendent or Foreman submits the delay for review, proving the work with photos.
+    /// The affected crews that have not accepted yet are asked to review it.
+    /// </summary>
+    Result<IReadOnlyList<DelayWorkflowWrite>> RequestHandoverCheck(DelayWorkflowContext context, IReadOnlyList<ReportPhotoUploadRecord> proofOfWork);
 
-    /// <summary>The affected crew's Foreman records a successful handover check for the current cycle.</summary>
+    /// <summary>
+    /// An affected crew's Foreman accepts the proof of work for their own crew only. The last crew to accept
+    /// closes the delay, which notifies every crew on it.
+    /// </summary>
     Result<IReadOnlyList<DelayWorkflowWrite>> VerifyHandover(DelayWorkflowContext context, DelayVerificationChange verification);
 
-    /// <summary>The responsible Superintendent closes the cycle after the handover checks, proving the work with photos.</summary>
-    Result<IReadOnlyList<DelayWorkflowWrite>> Resolve(DelayWorkflowContext context, IReadOnlyList<ReportPhotoUploadRecord> proofOfWork);
+    /// <summary>An affected crew's Foreman sends the proof of work back with a reason, returning the delay to Acknowledged.</summary>
+    Result<IReadOnlyList<DelayWorkflowWrite>> ReturnHandover(DelayWorkflowContext context, DelayReturnChange handoverReturn);
 
     /// <summary>A Superintendent reopens a resolved delay, which opens a new cycle for the same delay.</summary>
     Result<IReadOnlyList<DelayWorkflowWrite>> Reopen(DelayWorkflowContext context, string reason);

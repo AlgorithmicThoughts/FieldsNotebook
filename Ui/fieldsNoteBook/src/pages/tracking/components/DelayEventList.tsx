@@ -42,6 +42,7 @@ export function DelayEventList({ events }: DelayEventListProps) {
                 {event.cycleSequence === null ? '' : ` · Cycle ${event.cycleSequence}`}
               </small>
               {estimate === null ? null : <small>{estimate}</small>}
+              {event.returnReason === null ? null : <small>Sent back: {event.returnReason}</small>}
             </div>
           )
         })}

@@ -91,7 +91,7 @@ export const DELAY_ACKNOWLEDGMENT_CHOICES: {
   label: string;
 }[] = [
   { value: "WorkRemains", label: "My crew will clear it" },
-  { value: "ReadyForHandover", label: "The work is already ready" },
+  { value: "ReadyForHandover", label: "The work is already done" },
 ];
 
 /** DelayPhotos.Purpose. */
@@ -218,7 +218,7 @@ export interface DelayPhotoGroup {
   photos: DelayPhotoDetail[];
 }
 
-/** One successful handover check, from DelayImpactVerifications. */
+/** One affected crew accepting the proof of work, from DelayImpactVerifications. */
 export interface DelayVerification {
   verifiedByName: string;
   verifiedAt: string;
@@ -244,6 +244,8 @@ export interface DelayEventDetail {
   cycleSequence: number | null;
   oldExpectedReadyAt: string | null;
   newExpectedReadyAt: string | null;
+  /** Why the proof of work was sent back; only on `delay.handoverReturned`. */
+  returnReason: string | null;
 }
 
 /** One delay with the history, impacts, and photos the detail view needs. */

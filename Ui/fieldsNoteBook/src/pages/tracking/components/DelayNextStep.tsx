@@ -2,12 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/common/Button'
 import type { DelayDetail } from '@/domain/delays'
 import type { CurrentUser } from '@/domain/users'
-import {
-  EMPTY_ACTION_DRAFT,
-  submitsImmediately,
-  verifiableImpacts,
-  type DelayActionDraft,
-} from '../delayActionDraft'
+import { EMPTY_ACTION_DRAFT, verifiableImpacts, type DelayActionDraft } from '../delayActionDraft'
 import { useDelayAction } from '../useDelayAction'
 import type { DelayActionId, DelayActionOffer } from '../trackingView'
 import { DelayActionForm } from './DelayActionForm'
@@ -48,11 +43,6 @@ export function DelayNextStep({ note, offers, delay, user, onCompleted }: DelayN
 
   function open(action: DelayActionId) {
     clearError()
-
-    if (submitsImmediately(action)) {
-      submit(action, draft)
-      return
-    }
 
     // A Foreman who covers one affected crew never has to choose it.
     const [onlyImpact] = verifiableImpacts(delay, user)

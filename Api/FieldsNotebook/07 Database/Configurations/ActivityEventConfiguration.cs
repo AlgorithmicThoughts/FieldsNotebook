@@ -18,6 +18,7 @@ public class ActivityEventConfiguration : IEntityTypeConfiguration<ActivityEvent
         builder.Property(e => e.EventType).HasMaxLength(50).IsRequired();
         builder.Property(e => e.OldExpectedReadyAt).HasPrecision(3);
         builder.Property(e => e.NewExpectedReadyAt).HasPrecision(3);
+        builder.Property(e => e.ReturnReason).HasMaxLength(1000);
         builder.Property(e => e.CreatedAt).HasPrecision(3);
 
         // All relationships use ON DELETE NO ACTION, as in the SQL script.

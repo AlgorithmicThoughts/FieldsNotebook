@@ -122,7 +122,7 @@ public class DelayWorkflowAccessor(FieldNotebookContext context) : IDelayWorkflo
 
     private void AddProofOfWork(DelayWorkflowWrite write, int cycleId, IReadOnlyList<ReportPhotoRecord> uploaded)
     {
-        // CreatedAt matches the closure time, so each photo precedes or equals the cycle's ClosedAt.
+        // CreatedAt matches the submission time, so each photo precedes the cycle's ClosedAt.
         context.DelayPhotos.AddRange(uploaded.Select(p => new DelayPhoto
         {
             DelayId = write.DelayId,
@@ -187,7 +187,7 @@ public class DelayWorkflowAccessor(FieldNotebookContext context) : IDelayWorkflo
 
     // Conditional on the status the Engine validated, so a concurrent action cannot be silently overwritten.
     // A step that keeps its status still runs the update: it locks the row until commit and refuses a
-    // verification or revision that races a resolve or revoke onto a closed cycle.
+    // verification or revision that races a closing acceptance or revoke onto a closed cycle.
     private async Task<bool> MoveStatusAsync(DelayWorkflowWrite write, int fromStatusId, int? toStatusId, CancellationToken cancellationToken)
     {
         var moved = await context.Delays
@@ -221,13 +221,14 @@ public class DelayWorkflowAccessor(FieldNotebookContext context) : IDelayWorkflo
             ProjectId = write.ProjectId,
             DelayId = write.DelayId,
             DelayCycleId = cycleId,
-            DelayImpactId = write.Verification?.ImpactId,
+            DelayImpactId = write.Verification?.ImpactId ?? write.Return?.ImpactId,
             ActorUserId = write.ActorUserId,
             EventType = write.EventType,
             FromDelayStatusId = toStatusId is null ? null : fromStatusId,
             ToDelayStatusId = toStatusId,
             OldExpectedReadyAt = write.OldExpectedReadyAt,
             NewExpectedReadyAt = write.NewExpectedReadyAt,
+            ReturnReason = write.Return?.Reason,
             CreatedAt = write.OccurredAt,
         };
 

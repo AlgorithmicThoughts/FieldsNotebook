@@ -123,7 +123,7 @@ public sealed class DelayManager(AccessorFactory accessorFactory, EngineFactory 
         return await ApplyAsync(_workflowEngine.ReviseCompletionTime(context.Data, request.ExpectedReadyAt), cancellationToken);
     }
 
-    public async Task<Result<DelayActionResponse>> RequestHandoverCheckAsync(int userId, int projectId, int delayId, CancellationToken cancellationToken)
+    public async Task<Result<DelayActionResponse>> RequestHandoverCheckAsync(int userId, int projectId, int delayId, RequestHandoverCheckRequest request, CancellationToken cancellationToken)
     {
         var context = await LoadWorkflowAsync(userId, projectId, delayId, cancellationToken);
         if (context.IsFailure)
@@ -131,7 +131,7 @@ public sealed class DelayManager(AccessorFactory accessorFactory, EngineFactory 
             return context.Error;
         }
 
-        return await ApplyAsync(_workflowEngine.RequestHandoverCheck(context.Data), cancellationToken);
+        return await ApplyAsync(_workflowEngine.RequestHandoverCheck(context.Data, request.Photos.ToDomain()), cancellationToken);
     }
 
     public async Task<Result<DelayActionResponse>> VerifyHandoverAsync(int userId, int projectId, int delayId, int impactId, VerifyHandoverRequest request, CancellationToken cancellationToken)
@@ -145,7 +145,7 @@ public sealed class DelayManager(AccessorFactory accessorFactory, EngineFactory 
         return await ApplyAsync(_workflowEngine.VerifyHandover(context.Data, request.ToDomain(impactId)), cancellationToken);
     }
 
-    public async Task<Result<DelayActionResponse>> ResolveAsync(int userId, int projectId, int delayId, ResolveDelayRequest request, CancellationToken cancellationToken)
+    public async Task<Result<DelayActionResponse>> ReturnHandoverAsync(int userId, int projectId, int delayId, int impactId, ReturnHandoverRequest request, CancellationToken cancellationToken)
     {
         var context = await LoadWorkflowAsync(userId, projectId, delayId, cancellationToken);
         if (context.IsFailure)
@@ -153,7 +153,7 @@ public sealed class DelayManager(AccessorFactory accessorFactory, EngineFactory 
             return context.Error;
         }
 
-        return await ApplyAsync(_workflowEngine.Resolve(context.Data, request.Photos.ToDomain()), cancellationToken);
+        return await ApplyAsync(_workflowEngine.ReturnHandover(context.Data, request.ToDomain(impactId)), cancellationToken);
     }
 
     public async Task<Result<DelayActionResponse>> ReopenAsync(int userId, int projectId, int delayId, ReopenDelayRequest request, CancellationToken cancellationToken)
@@ -251,7 +251,7 @@ public sealed class DelayManager(AccessorFactory accessorFactory, EngineFactory 
 
     private async Task<StoredPhotoSet> StoreProofOfWorkAsync(IReadOnlyList<DelayWorkflowWrite> writes, CancellationToken cancellationToken)
     {
-        // Only a resolution carries proof of work, and it closes the cycle it names.
+        // Only a submission for review carries proof of work, stored against the open cycle it names.
         if (writes.SingleOrDefault(w => w.ProofOfWorkPhotos.Count > 0) is not { Cycle.CycleId: { } cycleId } step)
         {
             return StoredPhotoSet.Empty;

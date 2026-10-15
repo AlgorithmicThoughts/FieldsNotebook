@@ -35,24 +35,27 @@ export function reviseCompletionTime(projectId: number, delayId: number, expecte
   return apiPostJson(actionPath(projectId, delayId, 'completion-time-revisions'), { expectedReadyAt }, options)
 }
 
-/** The responsible Superintendent asks the affected crews' Foremen for a check. */
-export function requestHandoverCheck(projectId: number, delayId: number, options?: RequestOptions): Promise<DelayActionResult> {
-  return apiPost(actionPath(projectId, delayId, 'handover-requests'), options)
+/**
+ * The responsible crew's Superintendent or Foreman submits the delay for review,
+ * attaching one to five proof-of-work photos the affected crews look at.
+ */
+export async function requestHandoverCheck(projectId: number, delayId: number, photos: DelayPhotoUpload[], options?: RequestOptions): Promise<DelayActionResult> {
+  const form = new FormData()
+  await appendPhotos(form, photos)
+  return apiPostForm(actionPath(projectId, delayId, 'handover-requests'), form, options)
 }
 
-/** The affected crew's Foreman records a successful check for one impact. */
+/**
+ * An affected crew's Foreman accepts the proof of work for their own crew. The
+ * last crew to accept closes the delay.
+ */
 export function verifyHandover(projectId: number, delayId: number, body: { impactId: number; note: string | null }, options?: RequestOptions): Promise<DelayActionResult> {
   return apiPostJson(actionPath(projectId, delayId, `impacts/${body.impactId}/verifications`), { note: body.note }, options)
 }
 
-/**
- * The responsible Superintendent closes the cycle after the required checks,
- * attaching one to five proof-of-work photos.
- */
-export async function resolveDelay(projectId: number, delayId: number, photos: DelayPhotoUpload[], options?: RequestOptions): Promise<DelayActionResult> {
-  const form = new FormData()
-  await appendPhotos(form, photos)
-  return apiPostForm(actionPath(projectId, delayId, 'resolutions'), form, options)
+/** An affected crew's Foreman sends the proof of work back, saying what to fix. */
+export function returnHandover(projectId: number, delayId: number, body: { impactId: number; reason: string }, options?: RequestOptions): Promise<DelayActionResult> {
+  return apiPostJson(actionPath(projectId, delayId, `impacts/${body.impactId}/returns`), { reason: body.reason }, options)
 }
 
 /** A Superintendent reopens a resolved delay, which opens a new cycle. */

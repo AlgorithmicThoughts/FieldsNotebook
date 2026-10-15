@@ -28,21 +28,23 @@ public sealed partial class DelayWorkflowEngine : IDelayWorkflowEngine
         ActiveStatusCodes, CycleOpen: true,
         "a closed delay has no tentative completion time to revise.");
 
-    private static readonly Transition RequestHandoverCheckTransition = new("request a handover check on",
-        (c, _) => DirectsCrew(c.Access, c.State.OwnerCrewId),
+    // The responsible crew's Superintendent or its Foreman submits the finished work for review.
+    private static readonly Transition RequestHandoverCheckTransition = new("submit for review",
+        (c, _) => DirectsCrew(c.Access, c.State.OwnerCrewId) || LeadsCrew(c.Access, c.State.OwnerCrewId),
         [DelayStatusCodes.Acknowledged], CycleOpen: true,
-        "a handover check follows an acknowledgment.");
+        "a delay is submitted for review after its acknowledgment.");
 
-    // Only the affected crew's own Foreman can accept the handover for that crew.
-    private static readonly Transition VerifyHandoverTransition = new("verify the handover of",
+    // Only the affected crew's own Foreman accepts the proof of work, and only for that crew.
+    private static readonly Transition VerifyHandoverTransition = new("accept the proof of work on",
         (c, impact) => LeadsCrew(c.Access, impact!.BlockedCrewId),
         [DelayStatusCodes.ReadyForHandover], CycleOpen: true,
-        "the responsible Superintendent has not asked for a handover check yet.");
+        "the responsible crew has not submitted this delay for review yet.");
 
-    private static readonly Transition ResolveTransition = new("resolve",
-        (c, _) => DirectsCrew(c.Access, c.State.OwnerCrewId),
+    // The same Foreman who would accept may instead send the proof of work back for their crew.
+    private static readonly Transition ReturnHandoverTransition = new("send back",
+        (c, impact) => LeadsCrew(c.Access, impact!.BlockedCrewId),
         [DelayStatusCodes.ReadyForHandover], CycleOpen: true,
-        "a delay resolves after its handover checks.");
+        "only a delay under review can be sent back.");
 
     private static readonly Transition ReopenTransition = new("reopen",
         (c, _) => IsSuperintendent(c.Access),
@@ -70,22 +72,14 @@ public sealed partial class DelayWorkflowEngine : IDelayWorkflowEngine
         }
 
         // A tentative completion time is optional here: the answer can be that the work is already ready.
+        // Even then the acknowledgment only records the answer; review needs its own submission with proof of work.
         var readyAt = expectedReadyAt?.ToUniversalTime();
-        var acknowledged = Step(context, DelayEventTypes.Acknowledged, DelayStatusCodes.Acknowledged,
+        return Steps(Step(context, DelayEventTypes.Acknowledged, DelayStatusCodes.Acknowledged,
             DelayCycleChange.Acknowledge(state.CycleId, acknowledgment, readyAt), AffectedCrews(state)) with
         {
             OldExpectedReadyAt = readyAt is null ? null : state.ExpectedReadyAt,
             NewExpectedReadyAt = readyAt,
-        };
-
-        // When nothing remains for the responsible crew, the same answer asks the affected crews for their
-        // handover checks. Each step keeps its own event, so the history still reads as two actions.
-        if (DelayAcknowledgmentChoices.IsReadyForHandover(acknowledgment.Choice))
-        {
-            return Steps(acknowledged, HandoverCheckStep(context, DelayStatusCodes.Acknowledged));
-        }
-
-        return Steps(acknowledged);
+        });
     }
 
     public Result<IReadOnlyList<DelayWorkflowWrite>> ReviseCompletionTime(DelayWorkflowContext context, DateTimeOffset? expectedReadyAt)
@@ -112,14 +106,27 @@ public sealed partial class DelayWorkflowEngine : IDelayWorkflowEngine
         });
     }
 
-    public Result<IReadOnlyList<DelayWorkflowWrite>> RequestHandoverCheck(DelayWorkflowContext context)
+    public Result<IReadOnlyList<DelayWorkflowWrite>> RequestHandoverCheck(DelayWorkflowContext context,
+        IReadOnlyList<ReportPhotoUploadRecord> proofOfWork)
     {
+        var state = context.State;
         if (Refusal(RequestHandoverCheckTransition, context) is { } refused)
         {
             return refused;
         }
 
-        return Steps(HandoverCheckStep(context, context.State.StatusCode));
+        // Every submission, first or after a send-back, proves the work with its own photos.
+        if (PhotoRules.Validate(proofOfWork, "Attach one to five proof-of-work photos to submit the delay for review.") is { } invalidPhoto)
+        {
+            return invalidPhoto;
+        }
+
+        // A crew that already accepted in this cycle stays unblocked, so only the crews still waiting review it.
+        return Steps(Step(context, DelayEventTypes.ReadyForHandover, DelayStatusCodes.ReadyForHandover,
+            DelayCycleChange.Touch(state.CycleId), PendingCrews(state)) with
+        {
+            ProofOfWorkPhotos = proofOfWork,
+        });
     }
 
     public Result<IReadOnlyList<DelayWorkflowWrite>> VerifyHandover(DelayWorkflowContext context, DelayVerificationChange verification)
@@ -138,37 +145,59 @@ public sealed partial class DelayWorkflowEngine : IDelayWorkflowEngine
 
         if (impact.IsVerifiedInCycle)
         {
-            return DelayErrors.StateConflict(state.DelayId, "that crew already verified the handover in this cycle.");
+            return DelayErrors.StateConflict(state.DelayId, "that crew already accepted the proof of work in this cycle.");
         }
 
-        return Steps(Step(context, DelayEventTypes.HandoverVerified, null, DelayCycleChange.Touch(state.CycleId), [state.OwnerCrewId]) with
+        var isLastCrew = state.Impacts.All(i => i.ImpactId == impact.ImpactId || i.IsVerifiedInCycle);
+
+        // The acceptance unblocks this crew only. The responsible crew hears about it unless it also closes the delay,
+        // in which case the closing step tells every crew once instead of twice.
+        var accepted = Step(context, DelayEventTypes.HandoverVerified, null, DelayCycleChange.Touch(state.CycleId),
+            isLastCrew ? [] : [state.OwnerCrewId]) with
         {
             Verification = verification,
-        });
+        };
+
+        if (isLastCrew is false)
+        {
+            return Steps(accepted);
+        }
+
+        // The last waiting crew's acceptance closes the delay; nobody resolves it separately.
+        return Steps(accepted, Step(context, DelayEventTypes.Resolved, DelayStatusCodes.Resolved,
+            DelayCycleChange.CloseCycle(state.CycleId), EveryCrew(state)));
     }
 
-    public Result<IReadOnlyList<DelayWorkflowWrite>> Resolve(DelayWorkflowContext context, IReadOnlyList<ReportPhotoUploadRecord> proofOfWork)
+    public Result<IReadOnlyList<DelayWorkflowWrite>> ReturnHandover(DelayWorkflowContext context, DelayReturnChange handoverReturn)
     {
         var state = context.State;
-        if (Refusal(ResolveTransition, context) is { } refused)
+        var impact = state.Impacts.FirstOrDefault(i => i.ImpactId == handoverReturn.ImpactId);
+        if (impact is null)
+        {
+            return DelayErrors.ImpactNotFound(state.DelayId, handoverReturn.ImpactId);
+        }
+
+        if (Refusal(ReturnHandoverTransition, context, impact) is { } refused)
         {
             return refused;
         }
 
-        if (IsAwaitingHandoverCheck(state))
+        if (impact.IsVerifiedInCycle)
         {
-            return DelayErrors.StateConflict(state.DelayId, "every affected crew must verify the handover first.");
+            return DelayErrors.StateConflict(state.DelayId, "that crew already accepted the proof of work in this cycle.");
         }
 
-        // Every resolution, first or after a reopen, proves the work with its own photos.
-        if (PhotoRules.Validate(proofOfWork, "Attach one to five proof-of-work photos to resolve the delay.") is { } invalidPhoto)
+        if (string.IsNullOrWhiteSpace(handoverReturn.Reason))
         {
-            return invalidPhoto;
+            return RequestError.InvalidRequest("Say what the responsible crew must fix.");
         }
 
-        return Steps(Step(context, DelayEventTypes.Resolved, DelayStatusCodes.Resolved, DelayCycleChange.CloseCycle(state.CycleId), EveryCrew(state)) with
+        // Back to Acknowledged, so the responsible crew fixes the work and submits fresh proof. Crews that already
+        // accepted keep their acceptance, because it is recorded against their own impact.
+        return Steps(Step(context, DelayEventTypes.HandoverReturned, DelayStatusCodes.Acknowledged,
+            DelayCycleChange.Touch(state.CycleId), [state.OwnerCrewId]) with
         {
-            ProofOfWorkPhotos = proofOfWork,
+            Return = handoverReturn,
         });
     }
 
@@ -216,12 +245,6 @@ public sealed partial class DelayWorkflowEngine : IDelayWorkflowEngine
         return access.RoleName == RoleNames.Superintendent;
     }
 
-    /// <summary>Some affected crew has not yet verified the handover for the current cycle, or the delay has none.</summary>
-    private static bool IsAwaitingHandoverCheck(DelayWorkflowState state)
-    {
-        return state.Impacts.Count == 0 || state.Impacts.Any(i => i.IsVerifiedInCycle is false);
-    }
-
     /// <summary>
     /// Why the transition does not apply, checked in a fixed order: authority, then the cycle, then the
     /// status. Null when the action may proceed.
@@ -257,17 +280,13 @@ public sealed partial class DelayWorkflowEngine : IDelayWorkflowEngine
         new(context.State.DelayId, context.State.ProjectId, context.ActorUserId, context.OccurredAt, eventType,
             context.State.StatusCode, toStatusCode, cycle, NotifyCrews(context, recipientCrewIds));
 
-    /// <summary>The move to ReadyForHandover, asked for on its own or by an acknowledgment that needs no work.</summary>
-    private static DelayWorkflowWrite HandoverCheckStep(DelayWorkflowContext context, string fromStatusCode) =>
-        Step(context, DelayEventTypes.ReadyForHandover, DelayStatusCodes.ReadyForHandover,
-            DelayCycleChange.Touch(context.State.CycleId), AffectedCrews(context.State)) with
-        {
-            FromStatusCode = fromStatusCode,
-        };
-
     /// <summary>Every affected crew of the delay. The list is never reduced to one.</summary>
     private static IReadOnlyList<int> AffectedCrews(DelayWorkflowState state) =>
         state.Impacts.Select(i => i.BlockedCrewId).Distinct().ToList();
+
+    /// <summary>The affected crews that have not accepted the proof of work in the current cycle.</summary>
+    private static IReadOnlyList<int> PendingCrews(DelayWorkflowState state) =>
+        state.Impacts.Where(i => i.IsVerifiedInCycle is false).Select(i => i.BlockedCrewId).Distinct().ToList();
 
     private static IReadOnlyList<int> EveryCrew(DelayWorkflowState state) =>
         AffectedCrews(state).Append(state.OwnerCrewId).Distinct().ToList();
@@ -287,7 +306,7 @@ public sealed partial class DelayWorkflowEngine : IDelayWorkflowEngine
     #endregion
 
     /// <param name="Verb">Completes the refusal "The user cannot {Verb} delay {id}."</param>
-    /// <param name="IsPermitted">The actor's role and crew authority. The impact is set only for a handover verification.</param>
+    /// <param name="IsPermitted">The actor's role and crew authority. The impact is set only for an acceptance or a send-back.</param>
     /// <param name="CycleOpen">True when the action needs the open cycle; false when it needs the latest cycle closed.</param>
     private sealed record Transition(
         string Verb,

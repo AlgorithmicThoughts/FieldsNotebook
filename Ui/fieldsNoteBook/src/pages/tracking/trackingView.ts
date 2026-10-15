@@ -1,9 +1,9 @@
 import {
   CalendarDays,
   CircleCheck,
-  ClipboardCheck,
   RotateCcw,
   Send,
+  Undo2,
   Wrench,
   X,
   type LucideIcon,
@@ -18,7 +18,6 @@ import {
   canAcknowledge,
   canReopen,
   canRequestHandoverCheck,
-  canResolve,
   canRevoke,
   canSetCompletionTime,
   canVerifyHandover,
@@ -40,7 +39,7 @@ export const TRACKING_FILTERS: { value: TrackingFilter; label: string }[] = [
   { value: "all", label: "All delays" },
   { value: "blocking", label: "Blocking us" },
   { value: "waiting", label: "Waiting on us" },
-  { value: "verify", label: "Ready to verify" },
+  { value: "verify", label: "Ready to review" },
   { value: "closed", label: "Closed" },
 ];
 
@@ -72,7 +71,7 @@ const FILTER_RULES: Record<
   blocking: (delay, user) =>
     isDelayActive(delay) && affectsOurCrew(delay, user),
   waiting: (delay, user) => isDelayActive(delay) && ownedByOurCrew(delay, user),
-  // Only the affected crew's Foreman verifies that crew's handover.
+  // Only the affected crew's Foreman reviews the proof of work for that crew.
   verify: (delay, user) =>
     delay.statusCode === "ReadyForHandover" &&
     isActiveProject(delay, user) &&
@@ -172,7 +171,7 @@ export type DelayActionId =
   | "completionTime"
   | "requestCheck"
   | "verify"
-  | "resolve"
+  | "return"
   | "reopen"
   | "revoke";
 
@@ -185,14 +184,6 @@ export interface DelayActionOffer {
 
 interface ActionRule extends DelayActionOffer {
   isOffered: (delay: DelayDetail, user: CurrentUser) => boolean;
-}
-
-/** Every affected crew verified the handover for the current cycle. */
-function hasEveryHandoverCheck(delay: DelayDetail): boolean {
-  return (
-    delay.impacts.length > 0 &&
-    delay.impacts.every((impact) => impact.verifications.length > 0)
-  );
 }
 
 const ACTION_RULES: ActionRule[] = [
@@ -213,31 +204,30 @@ const ACTION_RULES: ActionRule[] = [
   },
   {
     id: "requestCheck",
-    label: "Request handover check",
+    label: "Submit for review",
     icon: Send,
     isOffered: (delay, user) =>
       canRequestHandoverCheck(user, delay) &&
       delay.statusCode === "Acknowledged",
   },
   {
+    // Each affected crew closes the delay for itself; the last one closes it for everyone.
     id: "verify",
-    label: "Verify handover",
-    icon: ClipboardCheck,
-    // A Foreman who already verified every crew they cover has nothing left to check.
+    label: "Accept for my crew",
+    icon: CircleCheck,
     isOffered: (delay, user) =>
       canVerifyHandover(user, delay) &&
       delay.statusCode === "ReadyForHandover" &&
       verifiableImpacts(delay, user).length > 0,
   },
   {
-    // A resolve waits for the required checks, never for the estimate alone.
-    id: "resolve",
-    label: "Resolve",
-    icon: CircleCheck,
+    id: "return",
+    label: "Send back",
+    icon: Undo2,
     isOffered: (delay, user) =>
-      canResolve(user, delay) &&
+      canVerifyHandover(user, delay) &&
       delay.statusCode === "ReadyForHandover" &&
-      hasEveryHandoverCheck(delay),
+      verifiableImpacts(delay, user).length > 0,
   },
   {
     id: "reopen",
@@ -286,18 +276,18 @@ function affectedCrewLabel(delay: DelayDetail): string {
 }
 
 /**
- * The stage the current cycle sits in. ReadyForHandover covers both the wait
- * for the checks and the wait for the resolve, so the checks separate them.
- * A reopened cycle starts the stages again, which is why it reads as the first.
+ * The stage the current cycle sits in. A send-back returns the delay to
+ * Acknowledged, so it reads as waiting for a new submission. A reopened cycle
+ * starts the stages again, which is why it reads as the first.
  */
 function currentStageIndex(delay: DelayDetail): number {
   switch (delay.statusCode) {
     case "Acknowledged":
       return 2;
     case "ReadyForHandover":
-      return hasEveryHandoverCheck(delay) ? 4 : 3;
+      return 3;
     case "Resolved":
-      return 5;
+      return 4;
     case "Raised":
     case "Reopened":
     case "Revoked":
@@ -305,31 +295,37 @@ function currentStageIndex(delay: DelayDetail): number {
   }
 }
 
-/** The five handover stages of the current cycle, earliest first. */
+/** The four review stages of the current cycle, earliest first. */
 export function toHandoverSteps(delay: DelayDetail): HandoverStep[] {
-  const ownerActor = `${delay.ownerCrewName} · Superintendent`;
   const stages = [
     {
       id: "raised",
       label: "Delay raised",
       actor: `${delay.reportedBy.crewName} · ${delay.reportedBy.displayName}`,
     },
-    { id: "acknowledge", label: "Acknowledge", actor: ownerActor },
-    { id: "ready", label: "Ready for handover", actor: ownerActor },
     {
-      id: "verify",
-      label: "Verify handover",
+      id: "acknowledge",
+      label: "Acknowledge",
+      actor: `${delay.ownerCrewName} · Superintendent`,
+    },
+    {
+      id: "review",
+      label: "Submit proof of work",
+      actor: `${delay.ownerCrewName} · Superintendent or Foreman`,
+    },
+    {
+      id: "accept",
+      label: "Review and accept",
       actor: `${affectedCrewLabel(delay)} · Foreman`,
     },
-    { id: "resolve", label: "Resolve delay", actor: ownerActor },
   ];
   const current = currentStageIndex(delay);
-  const isResolved = delay.statusCode === "Resolved";
+  const isClosed = delay.statusCode === "Resolved";
 
   return stages.map((stage, index) => ({
     ...stage,
     state:
-      isResolved || index < current
+      isClosed || index < current
         ? "done"
         : index === current
           ? "current"
@@ -352,8 +348,8 @@ export function toNextStepNote(delay: DelayDetail, user: CurrentUser): string {
 
   if (delay.statusCode === "Resolved") {
     return canReopen(user, delay)
-      ? "This delay is resolved. Reopen it if the blocker is still on site."
-      : "This delay is resolved. Any Superintendent can reopen it if the blocker remains.";
+      ? "Every affected crew accepted the proof of work, so this delay is closed. Reopen it if the blocker is still on site."
+      : "Every affected crew accepted the proof of work, so this delay is closed. Any Superintendent can reopen it if the blocker remains.";
   }
 
   if (
@@ -367,7 +363,7 @@ export function toNextStepNote(delay: DelayDetail, user: CurrentUser): string {
     delay.statusCode === "Acknowledged" &&
     canRequestHandoverCheck(user, delay)
   ) {
-    return `Ask the Foreman of ${affectedCrewLabel(delay)} for a handover check once the work is ready.`;
+    return `Once the work is done, attach proof-of-work photos and submit this delay for ${affectedCrewLabel(delay)} to review.`;
   }
 
   if (
@@ -375,14 +371,15 @@ export function toNextStepNote(delay: DelayDetail, user: CurrentUser): string {
     canVerifyHandover(user, delay)
   ) {
     return verifiableImpacts(delay, user).length > 0
-      ? "Check the finished work on site, then verify the handover for your crew."
-      : `You verified the handover for your crew. ${delay.ownerCrewName} must resolve this delay.`;
+      ? "Look at the proof of work and check the site. Accept it to close this delay for your crew, or send it back with what to fix."
+      : "You accepted the proof of work for your crew. The delay closes when every affected crew has accepted.";
   }
 
-  if (delay.statusCode === "ReadyForHandover" && canResolve(user, delay)) {
-    return hasEveryHandoverCheck(delay)
-      ? "Every affected crew verified the handover. Attach proof-of-work photos to resolve this delay."
-      : "Wait for every affected crew’s Foreman to verify the handover before you resolve it.";
+  if (
+    delay.statusCode === "ReadyForHandover" &&
+    canRequestHandoverCheck(user, delay)
+  ) {
+    return `Submitted for review. ${affectedCrewLabel(delay)} must accept the proof of work; you will be notified when the delay closes.`;
   }
 
   return `Nothing waits on you. ${delay.ownerCrewName} must remove the blocker.`;

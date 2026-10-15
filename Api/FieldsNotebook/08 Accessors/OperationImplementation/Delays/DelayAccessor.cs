@@ -215,7 +215,7 @@ public class DelayAccessor(FieldNotebookContext context) : IDelayAccessor
             where e.ProjectId == projectId && d.ProjectId == projectId && (delayId == null || d.Id == delayId)
             orderby e.CreatedAt, e.Id
             select new TrackingEventRecord(e.Id, e.DelayId, e.DelayCycleId, e.EventType, actor.DisplayName,
-                e.CreatedAt, e.OldExpectedReadyAt, e.NewExpectedReadyAt)).ToListAsync(cancellationToken);
+                e.CreatedAt, e.OldExpectedReadyAt, e.NewExpectedReadyAt, e.ReturnReason)).ToListAsync(cancellationToken);
         var maps = await context.SiteMaps.AsNoTracking().Where(m => m.ProjectId == projectId)
             .Select(m => new TrackingSiteMapRecord(m.Id, m.Name, m.Uri)).ToListAsync(cancellationToken);
         return new TrackingSet(delays, impacts, cycles, verifications, photos, events, maps);

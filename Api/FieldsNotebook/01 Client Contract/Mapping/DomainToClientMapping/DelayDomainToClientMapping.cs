@@ -76,7 +76,7 @@ public static class DelayDomainToClientMapping
     public static DelayEventResponse ToResponse(this TrackingEventRecord activityEvent, int? cycleSequence)
     {
         return new DelayEventResponse(activityEvent.Id, activityEvent.EventType, activityEvent.ActorName, activityEvent.CreatedAt,
-            cycleSequence, activityEvent.OldExpectedReadyAt, activityEvent.NewExpectedReadyAt);
+            cycleSequence, activityEvent.OldExpectedReadyAt, activityEvent.NewExpectedReadyAt, activityEvent.ReturnReason);
     }
 
     public static DelayImpactResponse ToResponse(this TrackingImpactRecord impact)

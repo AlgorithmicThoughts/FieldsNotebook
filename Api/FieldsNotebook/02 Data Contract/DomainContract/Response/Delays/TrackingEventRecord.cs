@@ -8,4 +8,5 @@ public sealed record TrackingEventRecord(
     string ActorName,
     DateTimeOffset CreatedAt,
     DateTimeOffset? OldExpectedReadyAt,
-    DateTimeOffset? NewExpectedReadyAt);
+    DateTimeOffset? NewExpectedReadyAt,
+    string? ReturnReason);

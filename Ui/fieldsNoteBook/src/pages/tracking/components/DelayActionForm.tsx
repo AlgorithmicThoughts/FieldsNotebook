@@ -14,9 +14,9 @@ import type { DelayActionId } from '../trackingView'
 const CONFIRM_LABEL: Record<DelayActionId, string> = {
   acknowledge: 'Acknowledge',
   completionTime: 'Save completion time',
-  requestCheck: 'Request handover check',
-  verify: 'Verify handover',
-  resolve: 'Resolve',
+  requestCheck: 'Submit for review',
+  verify: 'Accept for my crew',
+  return: 'Send back',
   reopen: 'Reopen delay',
   revoke: 'Withdraw delay',
 }
@@ -94,47 +94,79 @@ function CompletionTimeFields({ draft, disabled, onDraftChange }: DelayActionFie
   )
 }
 
-function VerifyFields({ delay, user, draft, disabled, onDraftChange }: DelayActionFieldsProps) {
+/** Only the affected crews this Foreman covers, and only those that have not accepted yet. */
+function ImpactChoice({ delay, user, draft, disabled, onDraftChange }: DelayActionFieldsProps) {
   const impacts = verifiableImpacts(delay, user)
 
-  if (impacts.length === 0) {
-    return <p>Your crew already verified the handover in this cycle. A reopen asks for it again.</p>
+  if (impacts.length < 2) {
+    return null
+  }
+
+  return (
+    <FormField
+      name="review-impact"
+      label="Affected crew"
+      required
+      description="Each affected crew accepts or sends back for itself."
+    >
+      <SelectField
+        value={draft.impactId === null ? null : String(draft.impactId)}
+        onValueChange={(value) => onDraftChange({ impactId: value === null ? null : Number(value) })}
+        options={impacts.map((impact) => ({
+          value: String(impact.id),
+          label:
+            impact.workItemTitle === null
+              ? impact.crewName
+              : `${impact.crewName} · ${impact.workItemTitle}`,
+        }))}
+        placeholder="Choose the crew you are reviewing for"
+        disabled={disabled}
+      />
+    </FormField>
+  )
+}
+
+function VerifyFields(props: DelayActionFieldsProps) {
+  const { delay, user, draft, disabled, onDraftChange } = props
+
+  if (verifiableImpacts(delay, user).length === 0) {
+    return <p>Your crew already accepted the proof of work in this cycle.</p>
   }
 
   return (
     <>
-      {impacts.length > 1 ? (
-        <FormField
-          name="verify-impact"
-          label="Affected crew"
-          required
-          description="Each affected work item needs its own check in this cycle."
-        >
-          <SelectField
-            value={draft.impactId === null ? null : String(draft.impactId)}
-            onValueChange={(value) => onDraftChange({ impactId: value === null ? null : Number(value) })}
-            options={impacts.map((impact) => ({
-              value: String(impact.id),
-              label:
-                impact.workItemTitle === null
-                  ? impact.crewName
-                  : `${impact.crewName} · ${impact.workItemTitle}`,
-            }))}
-            placeholder="Choose the crew you are verifying for"
-            disabled={disabled}
-          />
-        </FormField>
-      ) : null}
-
+      <ImpactChoice {...props} />
       <FormField
         name="verify-note"
         label="Note"
-        description="Optional. Check the finished work on site before you verify."
+        description="Optional. Accepting closes this delay for your crew only; it closes for everyone once every affected crew accepts."
       >
         <TextArea
           value={draft.note}
           disabled={disabled}
           onChange={(event) => onDraftChange({ note: event.target.value })}
+        />
+      </FormField>
+    </>
+  )
+}
+
+function ReturnFields(props: DelayActionFieldsProps) {
+  const { draft, disabled, onDraftChange } = props
+
+  return (
+    <>
+      <ImpactChoice {...props} />
+      <FormField
+        name="return-reason"
+        label="What must be fixed?"
+        required
+        description="The delay goes back to the responsible crew, who must fix the work and submit new proof."
+      >
+        <TextArea
+          value={draft.reason}
+          disabled={disabled}
+          onChange={(event) => onDraftChange({ reason: event.target.value })}
         />
       </FormField>
     </>
@@ -147,7 +179,7 @@ function ReopenFields({ draft, disabled, onDraftChange }: DelayActionFieldsProps
       name="reopen-reason"
       label="Why is this reopening?"
       required
-      description="A reopen starts a new cycle. It needs another acknowledgment and new handover checks."
+      description="A reopen starts a new cycle. It needs another acknowledgment, new proof of work, and a new review."
     >
       <TextArea
         value={draft.reason}
@@ -158,13 +190,13 @@ function ReopenFields({ draft, disabled, onDraftChange }: DelayActionFieldsProps
   )
 }
 
-function ResolveFields({ draft, disabled, onDraftChange, onReadingChange }: DelayActionFieldsProps) {
+function SubmitForReviewFields({ draft, disabled, onDraftChange, onReadingChange }: DelayActionFieldsProps) {
   return (
     <FormFieldset
-      name="resolve-proof-of-work"
+      name="review-proof-of-work"
       legend="Proof of work"
       required
-      description="Show the finished work that removed the blocker. The photos stay with this cycle."
+      description="Show the finished work that removed the blocker. The affected crews review these photos before they accept."
     >
       <PhotoPicker
         photos={draft.photos}
@@ -185,12 +217,13 @@ function RevokeFields() {
   )
 }
 
-/** Only these actions collect values; the rest send on the first click. */
-const ACTION_FIELDS: Partial<Record<DelayActionId, (props: DelayActionFieldsProps) => ReactNode>> = {
+/** The values each action collects before it sends. */
+const ACTION_FIELDS: Record<DelayActionId, (props: DelayActionFieldsProps) => ReactNode> = {
   acknowledge: AcknowledgeFields,
   completionTime: CompletionTimeFields,
+  requestCheck: SubmitForReviewFields,
   verify: VerifyFields,
-  resolve: ResolveFields,
+  return: ReturnFields,
   reopen: ReopenFields,
   revoke: RevokeFields,
 }
@@ -208,9 +241,7 @@ export function DelayActionForm({ pending, onSubmit, onCancel, ...rest }: DelayA
 
   return (
     <div className="action-form">
-      {Fields === undefined ? null : (
-        <Fields {...rest} disabled={pending} onReadingChange={setIsReadingPhotos} />
-      )}
+      <Fields {...rest} disabled={pending} onReadingChange={setIsReadingPhotos} />
 
       <Button
         label={pending ? 'Saving…' : CONFIRM_LABEL[rest.action]}

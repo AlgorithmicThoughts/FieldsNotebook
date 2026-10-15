@@ -23,6 +23,11 @@ public static class DelayClientToDomainMapping
         return new DelayVerificationChange(impactId, request.Note);
     }
 
+    public static DelayReturnChange ToDomain(this ReturnHandoverRequest request, int impactId)
+    {
+        return new DelayReturnChange(impactId, request.Reason.Trim());
+    }
+
     /// <summary>A request-scoped stream source, so Managers never open HTTP upload types.</summary>
     public static DelaySpeechAudioRecord ToDomain(this DelaySpeechRequest request)
     {

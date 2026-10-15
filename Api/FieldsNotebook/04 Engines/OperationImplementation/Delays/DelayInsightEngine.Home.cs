@@ -26,7 +26,7 @@ public sealed partial class DelayInsightEngine
         var blockingOurCrews = index.Delays.Count(index.BlocksOurCrews);
         var crewsWaitingOnUs = index.Delays
             .Where(d => index.OurCrewIds.Contains(d.OwnerCrewId))
-            .SelectMany(d => index.ImpactsOf(d).Where(i => i.BlockedCrewId != d.OwnerCrewId))
+            .SelectMany(d => index.ImpactsOf(d).Where(i => i.BlockedCrewId != d.OwnerCrewId && IsStillBlocked(i)))
             .Select(i => i.BlockedCrewId)
             .Distinct()
             .Count();
@@ -69,7 +69,7 @@ public sealed partial class DelayInsightEngine
 
         public bool BlocksOurCrews(ActiveDelayRecord delay)
         {
-            return ImpactsOf(delay).Any(i => OurCrewIds.Contains(i.BlockedCrewId));
+            return ImpactsOf(delay).Any(i => OurCrewIds.Contains(i.BlockedCrewId) && IsStillBlocked(i));
         }
     }
 }

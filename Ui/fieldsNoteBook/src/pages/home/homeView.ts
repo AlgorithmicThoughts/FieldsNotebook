@@ -15,7 +15,7 @@ export function toHomeMetrics(counts: HomeMetricCounts): HomeMetric[] {
   return [
     { id: 'blocking', icon: CirclePause, value: counts.blockingOurCrews, label: 'Blocking our crew' },
     { id: 'dependent', icon: Users, value: counts.crewsWaitingOnUs, label: 'Crews waiting on us' },
-    { id: 'verify', icon: ClipboardCheck, value: counts.readyToVerify, label: 'Ready to verify' },
+    { id: 'verify', icon: ClipboardCheck, value: counts.readyToVerify, label: 'Ready to review' },
   ]
 }
 

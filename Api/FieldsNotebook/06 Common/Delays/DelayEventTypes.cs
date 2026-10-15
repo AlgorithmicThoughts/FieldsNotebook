@@ -9,6 +9,8 @@ public static class DelayEventTypes
     public const string ExpectedReadyChanged = "delay.expectedReadyChanged";
     public const string ReadyForHandover = "delay.readyForHandover";
     public const string HandoverVerified = "delay.handoverVerified";
+    /// <summary>An affected crew's Foreman sent the proof of work back; ActivityEvents.ReturnReason says why.</summary>
+    public const string HandoverReturned = "delay.handoverReturned";
     public const string Resolved = "delay.resolved";
     public const string Reopened = "delay.reopened";
     public const string Revoked = "delay.revoked";

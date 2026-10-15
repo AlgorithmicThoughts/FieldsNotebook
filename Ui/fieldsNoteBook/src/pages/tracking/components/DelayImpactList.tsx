@@ -24,7 +24,7 @@ interface DelayImpactListProps {
 }
 
 /**
- * Each affected crew, the work item it cannot start, and its handover checks
+ * Each affected crew, the work item it cannot start, and its acceptances
  * for the current cycle. A reopened cycle starts with none of them.
  */
 export function DelayImpactList({ impacts, currentCycleSequence }: DelayImpactListProps) {
@@ -32,8 +32,8 @@ export function DelayImpactList({ impacts, currentCycleSequence }: DelayImpactLi
     <section className="detail-section">
       <h3>Affected crews</h3>
       <p>
-        A crew stays blocked while any unresolved delay prevents its work. Handover checks below
-        belong to cycle {currentCycleSequence} only.
+        Each affected crew accepts the proof of work for itself and is unblocked once it does.
+        Acceptances below belong to cycle {currentCycleSequence} only.
       </p>
 
       {impacts.map((impact) => (
@@ -41,9 +41,9 @@ export function DelayImpactList({ impacts, currentCycleSequence }: DelayImpactLi
           <div className="row wrap">
             <strong>{impact.crewName}</strong>
             {impact.verifications.length === 0 ? (
-              <Badge label="Handover not verified" tone="verify" icon={ClipboardCheck} />
+              <Badge label="Still blocked" tone="verify" icon={ClipboardCheck} />
             ) : (
-              <Badge label="Handover verified" tone="resolved" icon={CircleCheck} />
+              <Badge label="Accepted · unblocked" tone="resolved" icon={CircleCheck} />
             )}
           </div>
 

@@ -31,19 +31,20 @@ export function canSetCompletionTime(user: CurrentUser, delay: DelaySummary): bo
     (delay.statusCode === 'Acknowledged' || delay.statusCode === 'ReadyForHandover')
 }
 
-/** The responsible Superintendent asks the affected crew for a handover check. */
+/**
+ * The owner crew's Superintendent or its Foreman submits the finished work for
+ * review, with proof-of-work photos.
+ */
 export function canRequestHandoverCheck(user: CurrentUser, delay: DelaySummary): boolean {
-  return leadsOwnerCrew(user, delay)
+  return coversCrew(user, delay.ownerCrewName)
 }
 
-/** A Foreman of an affected crew verifies the handover. */
+/**
+ * A Foreman of an affected crew reviews the proof of work, then accepts it or
+ * sends it back, for their own crew only.
+ */
 export function canVerifyHandover(user: CurrentUser, delay: DelaySummary): boolean {
   return user.roleName === 'Foreman' && delay.blockedCrewNames.some((name) => coversCrew(user, name))
-}
-
-/** The Superintendent of the owner crew resolves the delay. */
-export function canResolve(user: CurrentUser, delay: DelaySummary): boolean {
-  return leadsOwnerCrew(user, delay)
 }
 
 /**

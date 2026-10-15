@@ -31,7 +31,7 @@ export function DelayCycleList({ cycles }: DelayCycleListProps) {
       <h3>Cycle history</h3>
       <p>
         Cycle one is the report. Each later cycle came from a reopen and carries
-        its own acknowledgment and its own handover checks.
+        its own acknowledgment, its own proof of work, and its own review.
       </p>
 
       {cycles.map((cycle) => (

@@ -100,13 +100,17 @@ public class DelaysController(ManagerFactory managerFactory) : ControllerBase
         return this.ToActionResult(result);
     }
 
+    // Submitting for review carries the proof of work, so the affected crews review the photos with the delay.
     [HttpPost("{delayId:int}/handover-requests", Name = "RequestDelayHandoverCheck")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(RequestLimits.DelayPhotoUploadBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = RequestLimits.DelayPhotoUploadBytes)]
     [ProducesResponseType<DelayActionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<DelayActionResponse>> RequestHandoverCheck([PositiveId] int projectId, [PositiveId] int delayId, CancellationToken cancellationToken)
+    public async Task<ActionResult<DelayActionResponse>> RequestHandoverCheck([PositiveId] int projectId, [PositiveId] int delayId, [FromForm] RequestHandoverCheckRequest request, CancellationToken cancellationToken)
     {
-        var result = await _delayManager.RequestHandoverCheckAsync(DemoIdentity.GetUserId(HttpContext), projectId, delayId, cancellationToken);
+        var result = await _delayManager.RequestHandoverCheckAsync(DemoIdentity.GetUserId(HttpContext), projectId, delayId, request, cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -122,16 +126,14 @@ public class DelaysController(ManagerFactory managerFactory) : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPost("{delayId:int}/resolutions", Name = "ResolveDelay")]
-    [Consumes("multipart/form-data")]
-    [RequestSizeLimit(RequestLimits.DelayPhotoUploadBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = RequestLimits.DelayPhotoUploadBytes)]
+    // A send-back is a sub-resource of the reviewing crew's impact, like its verification.
+    [HttpPost("{delayId:int}/impacts/{impactId:int}/returns", Name = "ReturnDelayHandover")]
     [ProducesResponseType<DelayActionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<DelayActionResponse>> Resolve([PositiveId] int projectId, [PositiveId] int delayId, [FromForm] ResolveDelayRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<DelayActionResponse>> ReturnHandover([PositiveId] int projectId, [PositiveId] int delayId, [PositiveId] int impactId, ReturnHandoverRequest request, CancellationToken cancellationToken)
     {
-        var result = await _delayManager.ResolveAsync(DemoIdentity.GetUserId(HttpContext), projectId, delayId, request, cancellationToken);
+        var result = await _delayManager.ReturnHandoverAsync(DemoIdentity.GetUserId(HttpContext), projectId, delayId, impactId, request, cancellationToken);
 
         return this.ToActionResult(result);
     }

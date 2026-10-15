@@ -46,10 +46,14 @@ public sealed partial class DelayInsightEngine
             return _impacts[delay.DelayId];
         }
 
-        /// <summary>One row, or null when the impact names no work item the next project day plans for.</summary>
+        /// <summary>
+        /// One row, or null when the crew already accepted the proof of work or the impact names no work item
+        /// the next project day plans for.
+        /// </summary>
         public BlockedWorkView? BuildRow(ActiveDelayRecord delay, ActiveDelayImpactRecord impact)
         {
-            if (impact.BlockedWorkItemId is { } workItemId && _plannedById.TryGetValue(workItemId, out var workItem))
+            if (IsStillBlocked(impact) && impact.BlockedWorkItemId is { } workItemId
+                && _plannedById.TryGetValue(workItemId, out var workItem))
             {
                 return new BlockedWorkView(delay, impact, workItem,
                     IsAdvanceNotice(delay.ReportType),

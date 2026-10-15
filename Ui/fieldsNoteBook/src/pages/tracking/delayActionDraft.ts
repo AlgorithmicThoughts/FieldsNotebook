@@ -2,7 +2,7 @@ import {
   acknowledgeDelay,
   reopenDelay,
   requestHandoverCheck,
-  resolveDelay,
+  returnHandover,
   reviseCompletionTime,
   revokeDelay,
   verifyHandover,
@@ -28,10 +28,11 @@ export interface DelayActionDraft {
   note: string;
   /** A `datetime-local` value in project time, converted to UTC on submit. */
   expectedReadyAt: string;
-  /** DelayImpacts.Id the Foreman verifies, chosen from their own crew's impacts. */
+  /** DelayImpacts.Id the Foreman accepts or sends back, chosen from their own crew's impacts. */
   impactId: number | null;
+  /** Why the delay reopens, or what the responsible crew must fix after a send-back. */
   reason: string;
-  /** Proof-of-work photos that close the cycle. Only a resolution sends them. */
+  /** Proof-of-work photos the affected crews review. Only a submission for review sends them. */
   photos: PhotoDraft[];
 }
 
@@ -45,17 +46,7 @@ export const EMPTY_ACTION_DRAFT: DelayActionDraft = {
 };
 
 /**
- * Actions that carry no values. They submit on the first click, except the
- * withdrawal, which asks first because no approved rule reopens a revoked delay.
- */
-const IMMEDIATE_ACTIONS: DelayActionId[] = ["requestCheck"];
-
-export function submitsImmediately(action: DelayActionId): boolean {
-  return IMMEDIATE_ACTIONS.includes(action);
-}
-
-/**
- * The impacts this Foreman can still verify: their own crew's, without a check
+ * The impacts this Foreman can still review: their own crew's, not yet accepted
  * in the current cycle. A reopened cycle returns every one of them again.
  */
 export function verifiableImpacts(
@@ -108,8 +99,12 @@ export function validateActionDraft(
     return "Enter the revised completion date and time.";
   }
 
-  if (action === "verify" && draft.impactId === null) {
-    return "Choose the affected crew you are verifying for.";
+  if ((action === "verify" || action === "return") && draft.impactId === null) {
+    return "Choose the affected crew you are reviewing for.";
+  }
+
+  if (action === "return" && trimmedOrNull(draft.reason) === null) {
+    return "Say what the responsible crew must fix.";
   }
 
   if (action === "reopen" && trimmedOrNull(draft.reason) === null) {
@@ -117,7 +112,7 @@ export function validateActionDraft(
   }
 
   if (
-    action === "resolve" &&
+    action === "requestCheck" &&
     (draft.photos.length < MIN_PHOTOS || draft.photos.length > MAX_PHOTOS)
   ) {
     return `Add ${MIN_PHOTOS} to ${MAX_PHOTOS} proof-of-work photos.`;
@@ -157,16 +152,7 @@ export function submitDelayAction(
         options,
       );
     case "requestCheck":
-      return requestHandoverCheck(projectId, id, options);
-    case "verify":
-      return verifyHandover(
-        projectId,
-        id,
-        { impactId: draft.impactId!, note: trimmedOrNull(draft.note) },
-        options,
-      );
-    case "resolve":
-      return resolveDelay(
+      return requestHandoverCheck(
         projectId,
         id,
         draft.photos.map(({ file, latitude, longitude }) => ({
@@ -174,6 +160,20 @@ export function submitDelayAction(
           latitude,
           longitude,
         })),
+        options,
+      );
+    case "verify":
+      return verifyHandover(
+        projectId,
+        id,
+        { impactId: draft.impactId!, note: trimmedOrNull(draft.note) },
+        options,
+      );
+    case "return":
+      return returnHandover(
+        projectId,
+        id,
+        { impactId: draft.impactId!, reason: draft.reason.trim() },
         options,
       );
     case "reopen":
